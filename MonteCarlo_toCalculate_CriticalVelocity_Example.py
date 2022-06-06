@@ -43,7 +43,7 @@ C_l_stdv = 0.29
 
 # Grain protrusion 
 p_mean = 0.7
-p_min = 0
+p_min = 0.1
 p_max = 1
 p_stdv = 0.4
 
@@ -99,8 +99,15 @@ k_von = 0.41 # Von Karman constant
 #%% Define deterministic force balance 
 # Wiberg and Smith (1987)
     
-def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A_n,A_p,p):
-    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_n*p + mu*C_l*A_p))**0.5
+def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
+    r = B_axis/2
+    A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
+    A_e = A - A_e
+    A_p = np.ones(len(p))*A
+    h = B_axis*p[np.where(p < 0.5)]
+    a = np.sqrt(r**2 - ((r - h)**2))
+    A_p[np.where(p < 0.5)] = np.pi * (a**2)
+    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
     return v_c
     
 #%% Calculate critical velocity (u_c) for grain entrainment using a Monte Carlo method for a single grain size
@@ -112,11 +119,10 @@ B_axis = Grain_size # Intermediate axis
 A_axis = B_axis # Long axis 
 C_axis = B_axis # Short axis 
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # Volume of a sphere 
-A_n = (B_axis/2)*(C_axis/2)*np.pi # Area normal to the flow 
-A_p = (A_axis/2)*(B_axis/2)*np.pi # Area parallel to the flow 
+A = (B_axis/2)*(C_axis/2)*np.pi # Area
 
 # Monte Carlo simulation for single grain size 
-v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A_n,A_p,p) 
+v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) 
 
 # Calculate statistics of distribution 
 v_FB_median = np.nanmedian(v_ForceBalance) # Median while excluding NaN values 
@@ -132,11 +138,10 @@ B_axis = Grain_size # Intermediate axis
 A_axis = B_axis # Long axis 
 C_axis = B_axis # Short axis 
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # Volume of a sphere 
-A_n = (B_axis/2)*(C_axis/2)*np.pi # Area normal to the flow 
-A_p = (A_axis/2)*(B_axis/2)*np.pi # Area parallel to the flow 
+A = (B_axis/2)*(C_axis/2)*np.pi # Area normal to the flow 
 
 # Monte Carlo simulation for single grain size 
-v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A_n,A_p,p) 
+v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) 
 
 # Calculate statistics of distribution 
 v_FB_median = np.nanmedian(v_ForceBalance) # Median while excluding NaN values 
@@ -169,11 +174,11 @@ B_axis = Grain_size
 A_axis = B_axis
 C_axis = B_axis
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi
-A_n = (B_axis/2)*(C_axis/2)*np.pi
-A_p = (A_axis/2)*(B_axis/2)*np.pi
+A = (B_axis/2)*(C_axis/2)*np.pi
+
 
 for i in range(0,len(Grain_size)): # Monte Carlo simulation across grain sizes
-    v_ForceBalance[:,i] = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis[i],B_axis[i],C_axis[i],V_w_V,V[i],A_n[i],A_p[i],p)
+    v_ForceBalance[:,i] = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis[i],B_axis[i],C_axis[i],V_w_V,V[i],A[i],p)
 
 # Calculate statistics of distribution 
 v_FB_median = np.zeros(len(Grain_size))
@@ -189,7 +194,7 @@ for i in range(0,len(Grain_size)):
 v_FB_iqr = v_FB_iqr/2
 v_FB_90 = v_FB_90/2
 
-#%% Plot calculated statistics across grain size range. 
+#%% Plot calculated statistics across grain size range
 
 plt.figure(figsize=(6,5))
 plt.plot(Grain_size,v_FB_median,'r',label='Median')
