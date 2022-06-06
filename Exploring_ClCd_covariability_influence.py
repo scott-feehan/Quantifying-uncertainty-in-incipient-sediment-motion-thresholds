@@ -16,44 +16,94 @@ from scipy.stats import truncnorm
 import seaborn as sns
 from scipy.stats import pearsonr
 
-#%% Parameter values
+#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
 
-# True or commonly assumed values
-rho_s_mean = 2650  
+#Sediment density 
+rho_s_mean = 2650 # Assumed mean
+rho_s_min = 2500 # Assumed minimium 
+rho_s_max = 3000 # Assumed maximum
+rho_s_stdv = 100 # Assumed standard deviation
+
+# Fluid density 
 rho_w_mean = 1000 
-mu_mean = 2.74 
-C_l_mean =  0.38
-C_d_mean =  0.76
-p_mean = 0.7
-
-# Minimum values 
-rho_s_min = 2500  
 rho_w_min = 990 
-mu_min = 0.27
-C_l_min = 0.06
-C_d_min = 0.1
-p_min = 0
-
-# Maximum values 
-rho_s_max = 3000  
 rho_w_max = 1200 
-mu_max =  11.43
-C_l_max = 2 
-C_d_max = 3 
-p_max = 1
-
-# Standard deviation of measurements 
-rho_s_stdv = 100
 rho_w_stdv = 30
-mu_stdv = 0.27  
-C_l_stdv = 0.29 
-C_d_stdv = 0.29 
+
+# Drag coefficient
+C_d_mean = 0.76 
+C_d_min = 0.1
+C_d_max = 3 
+C_d_stdv = 0.29
+
+# Lift coefficient 
+C_l_mean = 0.38
+C_l_min = 0.06
+C_l_max = 2 
+C_l_stdv = 0.29
+
+# Grain protrusion 
+p_mean = 0.7
+p_min = 0.1
+p_max = 1
 p_stdv = 0.4
 
+# Coefficient of friction
+mu_mean = 2.75
+mu_min = 0.27
+mu_max =  11.4
+mu_stdv = 0.27 
+
+# Converting mu mean and standard deviation to lognormal space
 ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
-#%% Grain size
+# Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
+
+#%% Create function to generate truncated normal distributions for force balaance parameters 
+
+def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
+    return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
+
+#%% 
+    
+monte_carlo_step = 1000000 # Monte Carlo iteration length
+
+# Generate distribution of respective force balance parameter
+X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
+rho_s = X.rvs(monte_carlo_step) 
+
+X = get_truncated_normal(rho_w_max,rho_w_min,rho_w_mean,rho_w_stdv)
+rho_w = X.rvs(monte_carlo_step) 
+
+X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
+C_l = X.rvs(monte_carlo_step) 
+
+X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
+C_d = X.rvs(monte_carlo_step) 
+
+X = get_truncated_normal(p_max ,p_min,p_mean,p_stdv)  
+p = X.rvs(monte_carlo_step) 
+
+mu = np.random.lognormal(ln_mu,ln_mu_stdv,monte_carlo_step)
+
+# Resample distribution if beyond the assumed minimum and maximum until the value within the specified range
+# Have to do this because of the lognormal distribution
+
+while True: 
+    temp = np.where((0>mu) | (mu>mu_max))
+    mu[temp] = np.random.lognormal(ln_mu,ln_mu_stdv,len(temp[0]))
+    if len(temp[0]) <1:
+        break 
+
+#%% Constants
+        
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+k_von = 0.41 # Von Karman constant
+
+#%% Sginle grain size
 
 GrainSize = 0.1
 
@@ -64,51 +114,18 @@ V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # assume perfect sphere volume
 A_n = (B_axis/2)*(C_axis/2)*np.pi # area normal to flow 
 A_p = (A_axis/2)*(B_axis/2)*np.pi # area parallel to flow
 
-#%% Create function to generate truncated normal distributions for force balaance parameters 
-
-def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
-    return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
-
-#%% Generate distributions 
-
-monte_carlo_step = 100000 # max steps in simultaiton 
-
-X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
-C_l = X.rvs(monte_carlo_step)
-
-X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
-C_d = X.rvs(monte_carlo_step)
-
-X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv )  
-rho_s = X.rvs(monte_carlo_step) 
-
-X = get_truncated_normal(rho_w_max,rho_w_min,rho_w_mean,rho_w_stdv)
-rho_w = X.rvs(monte_carlo_step)
-
-X = get_truncated_normal(p_max ,p_min,p_mean,p_stdv)  
-p = X.rvs(monte_carlo_step)
-
-mu = np.random.lognormal(ln_mu,ln_mu_stdv,monte_carlo_step)
-while True: 
-    temp = np.where((0>mu) | (mu>mu_max))
-    mu[temp] = np.random.lognormal(ln_mu,ln_mu_stdv,len(temp[0]))
-    if len(temp[0]) <1:
-        break 
-
-V_w_V = 1 
-k_von = 0.41 
-g = 9.81 
-theta = 0.001
-GrainSize = 0.1
-
 #%% Define deterministic force balance 
 # Wiberg and Smith (1987)
     
 def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
-    r = B_axis/2    
+    r = B_axis/2
     A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
-    A_e = A - A_e   
-    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A))**0.5
+    A_e = A - A_e
+    A_p = np.ones(len(p))*A
+    h = B_axis*p[np.where(p < 0.5)]
+    a = np.sqrt(r**2 - ((r - h)**2))
+    A_p[np.where(p < 0.5)] = np.pi * (a**2)    
+    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5    
     return v_c 
 
 #%% No Covariance 
@@ -290,7 +307,7 @@ C_d_C_l_pR_covary_neg = pearsonr(C_d_mathfit_neg,C_l_mathfit_neg)
 
 colors = ['#1845FB', '#FF5E02', '#C91F16', '#C849A9', '#ADAD7D', '#86C8DD', '#578DFF', '#656364'] 
 
-x_lim = [0.1,1.6]
+x_lim = [0.05,1.6]
 y_lim = [0.0,1.6]
 text_loc = 0.9
 r_xloc = 0.25
@@ -305,8 +322,8 @@ plt.figure(figsize=(9,9))
 # Typical assumption 
 ax = plt.subplot(331)
 sns.kdeplot(C_d_typical,C_l_typical,shade=True,shade_lowest=False,alpha=0.5,color='slategrey')
-plt.plot(C_d_C_l_typical_x,C_d_C_l_typical_y,linewidth=3,label='$r_p$ = '+str(np.round(C_d_C_l_pR_typical[0],decimals=3)),color='k')
-plt.text(r_xloc,r_a_yloc,'$r_p$ = '+str(np.round(C_d_C_l_pR_typical[0],decimals=1)),fontsize=12)
+plt.plot(C_d_C_l_typical_x,C_d_C_l_typical_y,linewidth=3,label='$r_p$ = 0.0',color='slategrey')
+plt.text(r_xloc,r_a_yloc,'$r_p$ = 0.0',fontsize=12)
 plt.text(x_lim[1]*text_loc,y_lim[1]*text_loc,'a',fontsize=14,fontweight='bold')
 plt.ylim(y_lim)
 plt.xlim(x_lim)
@@ -337,7 +354,6 @@ plt.text(r_xloc,r_a_yloc,'$r_p$ = '+str(np.round(C_d_C_l_pR_stdv_01[0],decimals=
 plt.xlabel('$C_D$',fontsize=14)
 plt.ylabel('$C_L$',fontsize=14)
 plt.text(x_lim[1]*text_loc,y_lim[1]*text_loc,'c',fontsize=14,fontweight='bold')
-
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
@@ -352,7 +368,6 @@ plt.text(r_xloc,r_a_yloc,'$r_p$ = '+str(np.round(C_d_C_l_pR_stdv_05_neg[0],decim
 plt.xlabel('$C_D$',fontsize=14)
 plt.ylabel('$C_L$',fontsize=14)
 plt.text(x_lim[1]*text_loc,y_lim[1]*text_loc,'e',fontsize=14,fontweight='bold')
-
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
@@ -367,7 +382,6 @@ plt.text(r_xloc,r_a_yloc,'$r_p$ = '+str(np.round(C_d_C_l_pR_stdv_01_neg[0],decim
 plt.xlabel('$C_D$',fontsize=14)
 plt.ylabel('$C_L$',fontsize=14)
 plt.text(x_lim[1]*text_loc,y_lim[1]*text_loc,'f',fontsize=14,fontweight='bold')
-
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
@@ -379,8 +393,6 @@ plt.subplot(334)
 plt.plot(C_d_mathfit_pos,C_l_mathfit_pos,linewidth=3,color=colors[4],label='$r_p$ = 1')
 plt.plot(C_d_mathfit_neg,C_l_mathfit_neg,linewidth=3,color=colors[5],label='$r_p$ = -1')
 plt.text(r_xloc,r_a_yloc,'$r_p$ = 1 and -1',fontsize=12)
-
-#lg = plt.legend(fontsize=12,frameon=True,edgecolor='k',loc='upper left')
 plt.xlabel('$C_D$',fontsize=14)
 plt.ylabel('$C_L$',fontsize=14)
 plt.text(x_lim[1]*text_loc,y_lim[1]*text_loc,'d',fontsize=14,fontweight='bold')
@@ -392,14 +404,14 @@ plt.xlim(x_lim)
 plt.tight_layout()
 
 
-y_lim = [1.3,2.3]
+y_lim = [1.3,2.5]
 x_lim = [-1.1,1.1]
 text_loc = 0.95
 
 plt.subplot(313)
 
-plt.axhline(np.nanmedian(v_ForceBalance_typical) - iqr(v_ForceBalance_typical,nan_policy='omit')/2,linestyle='--',color='k',linewidth=1)
-plt.axhline(np.nanmedian(v_ForceBalance_typical) + iqr(v_ForceBalance_typical,nan_policy='omit')/2,linestyle='--',color='k',linewidth=1)
+plt.axhline(np.nanmedian(v_ForceBalance_typical) - iqr(v_ForceBalance_typical,nan_policy='omit')/2,linestyle=(0, (5, 10)),color='k',linewidth=1)
+plt.axhline(np.nanmedian(v_ForceBalance_typical) + iqr(v_ForceBalance_typical,nan_policy='omit')/2,linestyle=(0, (5, 10)),color='k',linewidth=1)
 
 # Typical
 plt.plot(C_d_C_l_pR_typical[0],np.nanmedian(v_ForceBalance_typical),marker='o',markersize=10,mfc='slategrey',mec='k')
@@ -425,20 +437,14 @@ plt.errorbar(1,np.nanmedian(v_ForceBalance_covary_pos),yerr=iqr(v_ForceBalance_c
 plt.plot(-1,np.nanmedian(v_ForceBalance_covary_neg),marker='o',markersize=10,mfc=colors[5],mec='k')
 plt.errorbar(-1,np.nanmedian(v_ForceBalance_covary_neg),yerr=iqr(v_ForceBalance_covary_neg,nan_policy='omit')/2,color='k',capthick=1,capsize=5)
 
-plt.text(-0.8,2.08,'Range or $u_c$ for uncorrelated case',fontsize=12)
-
+plt.text(-0.85,2.15,'Range of $u_c$ for uncorrelated case',fontsize=12)
 plt.ylim(y_lim)
 plt.xlim(x_lim)
-
 plt.text(x_lim[1]*0.94,y_lim[1]*0.96,'g',fontsize=14,fontweight='bold')
-
 plt.xlabel('$C_D$ and $C_L$ correlation coefficient, $r_p$',fontsize=14)
-plt.ylabel('Critical velocity, $u_c$ ($m/s$)',fontsize=14)
+plt.ylabel('Critical velocity, $u_c$ (m/s)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
 plt.tight_layout()
-
-
-
 
