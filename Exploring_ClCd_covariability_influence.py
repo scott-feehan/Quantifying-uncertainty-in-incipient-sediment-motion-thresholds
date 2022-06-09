@@ -101,7 +101,6 @@ while True:
 g = 9.81 # Gravity 
 theta = 0.001 # Constant slope 
 V_w_V = 1 # Fully submerged grain  
-k_von = 0.41 # Von Karman constant
 
 #%% Sginle grain size
 

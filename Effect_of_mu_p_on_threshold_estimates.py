@@ -88,7 +88,7 @@ C_d = X.rvs(monte_carlo_step)
 g = 9.81 # Gravity 
 theta = 0.001 # Constant slope 
 V_w_V = 1 # Fully submerged grain  
-k_von = 0.41 # Von Karman constant
+k_von = 0.407 # Von Karman constant
 
 #%% Define force balance 
 

@@ -109,7 +109,7 @@ while True:
 g = 9.81 # Gravity 
 theta = 0.006 # reported local slope
 V_w_V = 1 # Fully submerged grain  
-k_von = 0.41 # Von Karman constant
+k_von = 0.407 # Von Karman constant
 
 #%% Using simplified force balance due to high assumed protrusion and non-spherical grains 
 
