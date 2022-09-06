@@ -5,17 +5,33 @@ Created on Mon May 23 18:23:02 2022
 
 @author: scottfeehan
 
-Plotting probability density functions of the force balance parameters (FBP) that are used in critical velocity calculation. FBP values divided by the mean show relative range of each parameter. 
-Calculate the relative influence of each parameter on the critical velocity by holding all except one variable constant and comparing to the result if all parameters are able to vary. 
+This code generates parts of figure 1.
 
+Plotting probability density functions of the force balance parameters (FBP) that 
+are used in critical velocity calculation. FBP values divided by the mean show 
+relative range of each parameter. 
+
+Calculate the relative influence of each parameter on the critical velocity by 
+holding all except one variable constant and comparing to the result if all 
+parameters are able to vary across their full distribution. 
 """
 
 import numpy as np
 import matplotlib.pyplot as plt 
 from scipy.stats import truncnorm
 
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameters 
+        
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope , which at these low slopes is basically np.arctan(theta)
+V_w_V = 1 # Fully submerged grain  
+monte_carlo_step = 10000000 # Monte Carlo iteration length
+var_bins= 200 # Bin number to discretize probability density estimate
+B_axis = 0.1
+A_axis = B_axis
+C_axis = B_axis
 
+# Assumed force balance parameter mean, minimum, maximum, and standard deviation
 #Sediment density 
 rho_s_mean = 2650 # Assumed mean
 rho_s_min = 2500 # Assumed minimium 
@@ -57,7 +73,6 @@ ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
 # Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
-
 #%% Create function to generate truncated normal distributions for force balaance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
@@ -65,8 +80,6 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 
 #%% 
     
-monte_carlo_step = 1000000 # Monte Carlo iteration length
-
 # Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
@@ -94,168 +107,146 @@ while True:
     if len(temp[0]) <1:
         break 
 
-#%% Constants
+#%% 
+
+def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
+    r = B_axis/2
+    A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
+    A_e = A - A_e
+    A_p = np.ones(np.size(p))*A
+    if np.size(p)>1 :
+        h = B_axis*p[np.where(p < 0.5)]
+        a = np.sqrt(r**2 - ((r - h)**2))
+        A_p[np.where(p < 0.5)] = np.pi * (a**2)
+    
+    if (np.size(p)==1 and p < 0.5):     
+        h = B_axis*p
+        a = np.sqrt(r**2 - ((r - h)**2))
+        A_p = np.pi * (a**2)
         
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
+    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
+    return v_c
 
 #%% Calculte probability density function for each force balance parameter such that the area under the curve integrates to one
 
-C_d_len = max(C_d) - min(C_d) # Full range of generated parameter distribution (not necessarily the same as max - min)
-C_l_len = max(C_l) - min(C_l)
-mu_len = max(mu) - min(mu)
-rho_s_len = (max(rho_s) - min(rho_s))/1000
-rho_w_len = (max(rho_w) - min(rho_w))/1000
-p_len = max(p) - min(p)
-max_len = max([C_d_len,C_l_len,mu_len,rho_s_len,rho_w_len]) # Longest range to determine fractional length of each parameter
-
-var_bins= 75 # Bin number to discretize probability estimate for maximum length
-
-temp = plt.hist(C_d,bins=int(var_bins*(C_d_len/max_len))) # Store counts for each bin proportional to the parameter range
+temp = plt.hist(C_d,bins=var_bins,density='True') # Store counts for each bin proportional to the parameter range
 C_d_bins = temp[1] # Number of parameters generated within each bin or "counts"
-C_d_counts = temp[0]/sum(temp[0]) # Store normalized count for each bin 
+C_d_counts = temp[0] # Store normalized count for each bin 
 C_d_bins = np.append(C_d_bins[0],C_d_bins) # Store ends of distribution twice to plot distribution down to zero
 C_d_bins = np.append(C_d_bins,C_d_bins[-1])
 C_d_counts = np.append(0,C_d_counts) # Correlated zeros
 C_d_counts = np.append(C_d_counts,0)
 
-temp = plt.hist(C_l,bins=int(var_bins*(C_l_len/max_len)))
+temp = plt.hist(C_l,bins=var_bins,density='True')
 C_l_bins = temp[1]
-C_l_counts = temp[0]/sum(temp[0])
+C_l_counts = temp[0]
 C_l_bins = np.append(C_l_bins[0],C_l_bins)
 C_l_bins = np.append(C_l_bins,C_l_bins[-1])
 C_l_counts = np.append(0,C_l_counts)
 C_l_counts = np.append(C_l_counts,0)
 
-temp = plt.hist(rho_s/1000,bins=int(var_bins*(rho_s_len/max_len)))
+temp = plt.hist(rho_s/1000,bins=var_bins,density='True')
 rho_s_bins = temp[1]
-rho_s_counts = temp[0]/sum(temp[0])
+rho_s_counts = temp[0]
 rho_s_bins = np.append(rho_s_bins[0],rho_s_bins)
 rho_s_bins = np.append(rho_s_bins,rho_s_bins[-1])
 rho_s_counts = np.append(0,rho_s_counts)
 rho_s_counts = np.append(rho_s_counts,0)
 
-temp = plt.hist(rho_w/1000,bins=int(var_bins*(rho_w_len/max_len)))
+temp = plt.hist(rho_w/1000,bins=var_bins,density='True')
 rho_w_bins = temp[1]
-rho_w_counts = temp[0]/sum(temp[0])
+rho_w_counts = temp[0]
 rho_w_bins = np.append(rho_w_bins[0],rho_w_bins)
 rho_w_bins = np.append(rho_w_bins,rho_w_bins[-1])
 rho_w_counts = np.append(0,rho_w_counts)
 rho_w_counts = np.append(rho_w_counts,0)
 
-temp = plt.hist(p,bins=int(var_bins*(p_len/max_len)))
+temp = plt.hist(p,bins=var_bins,density='True')
 p_bins = temp[1]
-p_counts = temp[0]/sum(temp[0])
+p_counts = temp[0]
 p_bins = np.append(p_bins[0],p_bins)
 p_bins = np.append(p_bins,p_bins[-1])
 p_counts = np.append(0,p_counts)
 p_counts = np.append(p_counts,0)
 
-temp = plt.hist(mu,bins=int(var_bins*(mu_len/max_len)))
+temp = plt.hist(mu,bins=var_bins,density='True')
 mu_bins = temp[1]
-mu_counts = temp[0]/sum(temp[0])
+mu_counts = temp[0]
 mu_bins = np.append(mu_bins[0],mu_bins)
 mu_bins = np.append(mu_bins,mu_bins[-1])
 mu_counts = np.append(0,mu_counts)
 mu_counts = np.append(mu_counts,0)
 plt.close()
 
-#%% Define force balance 
-
-def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
-    r = B_axis/2
-    A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
-    A_e = A - A_e
-    A_p = np.ones(len(p))*A
-    h = B_axis*p[np.where(p < 0.5)]
-    a = np.sqrt(r**2 - ((r - h)**2))
-    A_p[np.where(p < 0.5)] = np.pi * (a**2)
-    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
-    return v_c
 
 #%% Calculate critical velocity when varying all parameters and compare to when a each parameter is varied while all others are held constant. 
 
-B_axis = 0.1
-A_axis = B_axis
-C_axis = B_axis
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # assume perfect sphere volume 
 A = (B_axis/2)*(C_axis/2)*np.pi # area normal to flow 
 
 v_ForceBalance_all = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Varying all parameters 
-v_ForceBalance_none = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Keeping all parameters constant
-v_ForceBalance_rho_s = ForceBalance(rho_s,rho_w_mean,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary sediment density 
-v_ForceBalance_rho_w = ForceBalance(rho_s_mean,rho_w,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary fluid density 
-v_ForceBalance_mu = ForceBalance(rho_s_mean,rho_w_mean,g,mu,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary friction coefficient
-v_ForceBalance_C_d = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l_mean,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary drag coefficient 
-v_ForceBalance_C_l = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary lift coefficient
+v_ForceBalance_none = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Keeping all parameters constant
+v_ForceBalance_rho_s = ForceBalance(rho_s,rho_w_mean,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Vary sediment density 
+v_ForceBalance_rho_w = ForceBalance(rho_s_mean,rho_w,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Vary fluid density 
+v_ForceBalance_mu = ForceBalance(rho_s_mean,rho_w_mean,g,mu,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Vary friction coefficient
+v_ForceBalance_C_d = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l_mean,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Vary drag coefficient 
+v_ForceBalance_C_l = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p_mean) # Vary lift coefficient
 v_ForceBalance_p = ForceBalance(rho_s_mean,rho_w_mean,g,mu_mean,C_l_mean,C_d_mean,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) # Vary protrusion
 
 #%% Calculate probability density function for each varied force balance parameter such that the area under the curve integrates to one
 
-v_all_len = max(v_ForceBalance_all) - min(v_ForceBalance_all)
-v_C_d_len = max(v_ForceBalance_C_d) - min(v_ForceBalance_C_d)
-v_C_l_len = max(v_ForceBalance_C_l) - min(v_ForceBalance_C_l)
-v_mu_len = max(v_ForceBalance_mu) - min(v_ForceBalance_mu)
-v_rho_s_len = max(v_ForceBalance_rho_s) - min(v_ForceBalance_rho_s)
-v_rho_w_len = max(v_ForceBalance_rho_w) - min(v_ForceBalance_rho_w)
-v_p_len = max(v_ForceBalance_p) - min(v_ForceBalance_p)
-v_max_len = max([v_C_d_len,v_C_l_len,v_mu_len,v_rho_s_len,v_rho_w_len])
-
-var_bins= 75
-
 plt.figure()
-temp = plt.hist(v_ForceBalance_all,bins=int(var_bins*(v_all_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_all,bins=var_bins,density='True')
 v_all_bins = temp[1]
-v_all_counts = temp[0]/sum(temp[0])
+v_all_counts = temp[0]
 v_all_bins = np.append(v_all_bins[0],v_all_bins)
 v_all_bins = np.append(v_all_bins,v_all_bins[-1])
 v_all_counts = np.append(0,v_all_counts)
 v_all_counts = np.append(v_all_counts,0)
 
-temp = plt.hist(v_ForceBalance_C_d,bins=int(var_bins*(v_C_d_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_C_d,bins=var_bins,density='True')
 v_C_d_bins = temp[1]
-v_C_d_counts = temp[0]/sum(temp[0])
+v_C_d_counts = temp[0]
 v_C_d_bins = np.append(v_C_d_bins[0],v_C_d_bins)
 v_C_d_bins = np.append(v_C_d_bins,v_C_d_bins[-1])
 v_C_d_counts = np.append(0,v_C_d_counts)
 v_C_d_counts = np.append(v_C_d_counts,0)
 
-temp = plt.hist(v_ForceBalance_C_l,bins=int(var_bins*(v_C_l_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_C_l,bins=var_bins,density='True')
 v_C_l_bins = temp[1]
-v_C_l_counts = temp[0]/sum(temp[0])
+v_C_l_counts = temp[0]
 v_C_l_bins = np.append(v_C_l_bins[0],v_C_l_bins)
 v_C_l_bins = np.append(v_C_l_bins,v_C_l_bins[-1])
 v_C_l_counts = np.append(0,v_C_l_counts)
 v_C_l_counts = np.append(v_C_l_counts,0)
 
-temp = plt.hist(v_ForceBalance_mu,bins=int(var_bins*(v_mu_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_mu,bins=var_bins,density='True')
 v_mu_bins = temp[1]
-v_mu_counts = temp[0]/sum(temp[0])
+v_mu_counts = temp[0]
 v_mu_bins = np.append(v_mu_bins[0],v_mu_bins)
 v_mu_bins = np.append(v_mu_bins,v_mu_bins[-1])
 v_mu_counts = np.append(0,v_mu_counts)
 v_mu_counts = np.append(v_mu_counts,0)
 
-temp = plt.hist(v_ForceBalance_rho_s,bins=int(var_bins*(v_rho_s_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_rho_s,bins=var_bins,density='True')
 v_rho_s_bins = temp[1]
-v_rho_s_counts = temp[0]/sum(temp[0])
+v_rho_s_counts = temp[0]
 v_rho_s_bins = np.append(v_rho_s_bins[0],v_rho_s_bins)
 v_rho_s_bins = np.append(v_rho_s_bins,v_rho_s_bins[-1])
 v_rho_s_counts = np.append(0,v_rho_s_counts)
 v_rho_s_counts = np.append(v_rho_s_counts,0)
 
-temp = plt.hist(v_ForceBalance_rho_w,bins=int(var_bins*(v_rho_w_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_rho_w,bins=var_bins,density='True')
 v_rho_w_bins = temp[1]
-v_rho_w_counts = temp[0]/sum(temp[0])
+v_rho_w_counts = temp[0]
 v_rho_w_bins = np.append(v_rho_w_bins[0],v_rho_w_bins)
 v_rho_w_bins = np.append(v_rho_w_bins,v_rho_w_bins[-1])
 v_rho_w_counts = np.append(0,v_rho_w_counts)
 v_rho_w_counts = np.append(v_rho_w_counts,0)
 
-temp = plt.hist(v_ForceBalance_p,bins=int(var_bins*(v_p_len/v_max_len)))
+temp = plt.hist(v_ForceBalance_p,bins=var_bins,density='True')
 v_p_bins = temp[1]
-v_p_counts = temp[0]/sum(temp[0])
+v_p_counts = temp[0]
 v_p_bins = np.append(v_p_bins[0],v_p_bins)
 v_p_bins = np.append(v_p_bins,v_p_bins[-1])
 v_p_counts = np.append(0,v_p_counts)
@@ -266,7 +257,7 @@ plt.close()
 
 colors = ['#5790FC', '#F89C20', '#E42536', '#964A8B', '#9C9CA1', '#7A21DD']
 
-y_lim = [0,0.19]
+y_lim = [0,5]
 x_lim = [-0.05,4.8] 
 x_text = 0.02
 y_text = 0.89
@@ -274,12 +265,12 @@ y_text = 0.89
 plt.figure(figsize=(7.5,13))
 # Probability density function of FBP values 
 plt.subplot(311)
-plt.plot(rho_w_bins[:-1],rho_w_counts,linewidth=3,label=r'$\rho_f$ (g/cm$^3$)',color=colors[4], linestyle=':')
-plt.plot(rho_s_bins[:-1],rho_s_counts,linewidth=3,label=r'$\rho_s$ (g/cm$^3$)',color=colors[3], linestyle='-.')
-plt.plot(C_l_bins[:-1],C_l_counts,linewidth=3,label='$C_L$',color=colors[1], linestyle=(0, (3, 1, 1, 1, 1, 1)))
-plt.plot(mu_bins[:-1],mu_counts,linewidth=3,label=r'$\mu$ = $tan(\phi)$',color=colors[2], linestyle= '-')
-plt.plot(p_bins[:-1],p_counts,linewidth=3,label='$p_*$', linestyle='--',color=colors[5])
-plt.plot(C_d_bins[:-1],C_d_counts,linewidth=3,label='$C_D$',color=colors[0], linestyle='-.')
+plt.plot(C_d_bins[:-1],C_d_counts,linewidth=2,label='$C_D$',color=colors[0], linestyle='-.')
+plt.plot(C_l_bins[:-1],C_l_counts,linewidth=2,label='$C_L$',color=colors[1], linestyle=(0, (3, 1, 1, 1, 1, 1)))
+plt.plot(mu_bins[:-1],mu_counts,linewidth=2,label=r'$\mu$ = $tan(\phi)$',color=colors[2], linestyle= '-')
+plt.plot(rho_s_bins[:-1],rho_s_counts,linewidth=2,label=r'$\rho_s$ (g/cm$^3$)',color=colors[3], linestyle='-.')
+plt.plot(rho_w_bins[:-1],rho_w_counts,linewidth=2,label=r'$\rho_f$ (g/cm$^3$)',color=colors[4], linestyle=':')
+plt.plot(p_bins[:-1],p_counts,linewidth=2,label='$p_*$', linestyle='--',color=colors[5])
 plt.ylim(y_lim)
 plt.xlim(x_lim)
 plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[0])*y_text,'b',horizontalalignment ='left',fontsize=14,fontweight='bold')
@@ -292,12 +283,12 @@ plt.legend(fontsize=14,frameon=True,edgecolor='k')
 
 plt.subplot(312)
 # Probability density function of FBP values normalized by the respective mean
-plt.plot(rho_w_bins[:-1]/(rho_w_mean/1000),rho_w_counts,linewidth=3,label=r'$\rho_f$ / $\overline{\rho}_f$', linestyle=':',color=colors[4])
-plt.plot(rho_s_bins[:-1]/(rho_s_mean/1000),rho_s_counts,linewidth=3,label=r'$\rho_s$ / $\overline{\rho}_s$', linestyle='-.',color=colors[3])
-plt.plot(C_l_bins[:-1]/C_l_mean,C_l_counts,linewidth=3,label='$C_L$ / $\overline{C}_L$', linestyle=(0, (3, 1, 1, 1, 1, 1)),color=colors[1])
-plt.plot(mu_bins[:-1]/mu_mean,mu_counts,linewidth=3,label=r'$\mu$ / $\overline{\mu}$', linestyle= '-',color=colors[2])
-plt.plot(p_bins[:-1]/p_mean,p_counts,linewidth=3,label='$p_*$ / $\overline{p}_*$', linestyle='--',color=colors[5])
-plt.plot(C_d_bins[:-1]/C_d_mean,C_d_counts,linewidth=3,label='$C_D$ / $\overline{C}_D$', linestyle='-.',color=colors[0])
+plt.plot(C_d_bins[:-1]/C_d_mean,C_d_counts,linewidth=2,label='$C_D$ / $\overline{C}_D$', linestyle='-.',color=colors[0])
+plt.plot(C_l_bins[:-1]/C_l_mean,C_l_counts,linewidth=2,label='$C_L$ / $\overline{C}_L$', linestyle=(0, (3, 1, 1, 1, 1, 1)),color=colors[1])
+plt.plot(mu_bins[:-1]/mu_mean,mu_counts,linewidth=2,label=r'$\mu$ / $\overline{\mu}$', linestyle= '-',color=colors[2])
+plt.plot(rho_s_bins[:-1]/(rho_s_mean/1000),rho_s_counts,linewidth=2,label=r'$\rho_s$ / $\overline{\rho}_s$', linestyle='-.',color=colors[3])
+plt.plot(rho_w_bins[:-1]/(rho_w_mean/1000),rho_w_counts,linewidth=2,label=r'$\rho_f$ / $\overline{\rho}_f$', linestyle=':',color=colors[4])
+plt.plot(p_bins[:-1]/p_mean,p_counts,linewidth=2,label='$p_*$ / $\overline{p}_*$', linestyle='--',color=colors[5])
 plt.ylabel('Probability density',fontsize=14)
 plt.xlabel('Parameter value normalizes by its mean',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
@@ -308,15 +299,20 @@ plt.xlim(x_lim)
 plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[0])*y_text,'c',horizontalalignment ='left',fontsize=14,fontweight='bold')
 plt.legend(fontsize=14,frameon=True,edgecolor='k') 
 
+y_lim = [0,4]
+x_lim = [1,3.5] 
+x_text = 0.02
+y_text = 0.89
+
 plt.subplot(313)
 # Probability density function of critical velocity calculated by varying each parameter and maintaining all others at a constant value
-plt.plot(v_all_bins[:-1],v_all_counts,linewidth=3,label='All', linestyle='-',color='k')
-plt.plot(v_p_bins[:-1],v_p_counts,linewidth=3,label='$p_*$', linestyle='--',color=colors[5])
-plt.plot(v_mu_bins[:-1],v_mu_counts,linewidth=3,label=r'$\mu$', linestyle= '-',color=colors[2])
-plt.plot(v_rho_w_bins[:-1],v_rho_w_counts,linewidth=3,label=r'$\rho_f$', linestyle=':',color=colors[4])
-plt.plot(v_rho_s_bins[:-1],v_rho_s_counts,linewidth=3,label=r'$\rho_s$', linestyle='-.',color=colors[3])
-plt.plot(v_C_d_bins[:-1],v_C_d_counts,linewidth=3,label='$C_D$', linestyle='-.',color=colors[0])
-plt.plot(v_C_l_bins[:-1],v_C_l_counts,linewidth=3,label='$C_L$', linestyle=(0, (3, 1, 1, 1, 1, 1)),color=colors[1])
+plt.plot(v_all_bins[:-1],v_all_counts,linewidth=2,label='All', linestyle='-',color='k')
+plt.plot(v_C_d_bins[:-1],v_C_d_counts,linewidth=2,label='$C_D$', linestyle='-.',color=colors[0])
+plt.plot(v_C_l_bins[:-1],v_C_l_counts,linewidth=2,label='$C_L$', linestyle=(0, (3, 1, 1, 1, 1, 1)),color=colors[1])
+plt.plot(v_mu_bins[:-1],v_mu_counts,linewidth=2,label=r'$\mu$', linestyle= '-',color=colors[2])
+plt.plot(v_rho_s_bins[:-1],v_rho_s_counts,linewidth=2,label=r'$\rho_s$', linestyle='-.',color=colors[3])
+plt.plot(v_rho_w_bins[:-1],v_rho_w_counts,linewidth=2,label=r'$\rho_f$', linestyle=':',color=colors[4])
+plt.plot(v_p_bins[:-1],v_p_counts,linewidth=2,label='$p_*$', linestyle='--',color=colors[5])
 plt.ylabel('Probability Density',fontsize=14)
 plt.xlabel('Estimate critical velocity ($m/s$)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
@@ -324,8 +320,6 @@ plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
 lg = plt.legend(fontsize=14,frameon=True,title='Varied FBP',edgecolor='k')
 lg.get_title().set_fontsize('14') 
-y_lim = [0,0.37]
-x_lim = [0.95,6.5] 
 plt.ylim(y_lim)
 plt.xlim(x_lim)
 plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[0])*y_text,'d',horizontalalignment ='left',fontsize=14,fontweight='bold')
