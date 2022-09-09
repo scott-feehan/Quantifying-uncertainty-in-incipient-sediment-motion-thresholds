@@ -5,7 +5,11 @@ Created on Mon Jun  6 13:57:46 2022
 
 @author: scottfeehan
 
-Comparing theoretical estiamtes of critical to idealized experiments from Wu and Shih (2012)
+This code generates parts of figure 3
+
+Comparing theoretical estiamtes of critical velocity to idealized experiments from Wu and Shih (2012).
+Theoretical estimates are refined using identical constraints when avaliable (e.g. Prostrusion and Coefficeint of friction) 
+or inferred from other laboratory experiments (e.g. Drag coefficient)
 
 """
 
@@ -14,13 +18,45 @@ import matplotlib.pyplot as plt
 from scipy.stats import truncnorm
 from scipy.stats import iqr
 
+
 #%% Uploading data
 
+# Experimental flume data
 filepath = 'Wu_2012_Experiment_1.csv'
 Wu_dataset_1 = np.loadtxt(filepath,delimiter=',')
 
 filepath = 'Wu_2012_Experiment_2.csv'
 Wu_dataset_2 = np.loadtxt(filepath,delimiter=',')
+
+# Near grain velocity - Drag coefficient observations
+filepath = filepath = 'Schmeeckle_fig_10c.txt'
+Schmeeckle_2007_CD_u = np.loadtxt(filepath,skiprows=1) # Drag coefficient, grain proximal velocity 
+Schmeeckle_2007_CD_u[:,0] = Schmeeckle_2007_CD_u[:,0]/100 # Convert velocity to m/s
+
+#%% Constraints and parameters 
+
+monte_carlo_step = 100000 # Monte Carlo iteration length
+grain = 0.008 # Diameter of mobilized grain
+bed = 0.008 # Diameter of grains in the bed
+V_w_V = 1 # Fully submerged grain 
+p1_protrusion = 0.86 # Protrusion of grain in pocket 1 
+p2_protrusion = 0.86 # Protrusion of grain in pocket 2 
+rho_s_2500 = 2500
+rho_s_1430 = 1430
+rho_w = 1000 
+g = 9.81
+theta = 0.0001
+
+#%% Experimental constraints for unconstrained parameters 
+
+C_l_max = 2 
+C_l_min = 0.06
+C_l_stdv = 0.29
+C_l_mean = 0.19 # Assumed lower lift coefficient b/c low flow velocity
+
+C_d_max = 3 
+C_d_min = 0.1
+C_d_stdv = 0.29
 
 #%% Loading data and differentiate into pre- and post-entrainment.
 
@@ -42,13 +78,22 @@ pos = np.where(Wu_data_2_t > 0)
 Wu_mean_data_2_neg = Wu_dataset_2[neg,1].reshape(-1)
 Wu_mean_data_2_pos = Wu_dataset_2[pos,1].reshape(-1)
 
+#%% Experimental data from Wu and Shih (2012) table 1 
+
+data_1_u_pre = np.round(np.mean(Wu_mean_data_1_neg),decimals=3) # Averaged mean is same as found in Wu and Shih (2012) table 1
+data_1_sigma_pre = 0.04 # sigma From Wu and Shih (2012) table 1
+
+data_1_u_post = np.round(np.mean(Wu_mean_data_1_pos),decimals=3)
+data_1_sigma_post = 0.043
+
+data_2_u_pre = np.round(np.mean(Wu_mean_data_2_neg),decimals=3)
+data_2_sigma_pre = 0.023
+
+data_2_u_post = np.round(np.mean(Wu_mean_data_2_pos),decimals=3)
+data_2_sigma_post = 0.026 
+
 #%% Calculating the mean coefficient of friction tan(phi) = mu of the idealized pocket using method from Kirchner et. al. (1990). Dataset 2 pivots between two spheres. 
 # Dataset 3 pivots either up and over particle directly downstream or diagonal to flow direction through pocket. 
-
-monte_carlo_step = 100000 # Monte Carlo iteration length
-
-grain = 0.008 # Grain 
-bed = 0.008
 
 # Coefficient of friction  Pocket 1 - Dataset 2
 mu_p1_mean = (1/(np.sqrt(3)))/(np.sqrt((grain/bed)**2  + 2*(grain/bed) - (1/3))) # Eq 1, Kirchner et al. 1990 # tan(phi) = this equation
@@ -97,22 +142,8 @@ B_axis = grain
 V = (B_axis/2)*(B_axis/2)*(B_axis/2)*(4/3)*np.pi # Volume of test particle
 A = (B_axis/2)*(B_axis/2)*np.pi # Area 
 
-V_w_V = 1 # Fully submerged grain 
-
-p1_protrusion = 0.86 # Protrusion of grain in pocket 1 
-p2_protrusion = 0.86 # Protrusion of grain in pocket 2 
-
-rho_s_2500 = 2500
-rho_s_1430 = 1430
-rho_w = 1000 
-g = 9.81
-theta = 0.0001
 
 #%% Using independent grain proximal-$C_D$ observations from Schmeeckle et. al. (2007) to calibrate mean $C_D$ for the respective experimental Monte Carlo simulation for the respective experiments.
-
-filepath = filepath = 'Schmeeckle_fig_10c.txt'
-Schmeeckle_2007_CD_u = np.loadtxt(filepath,skiprows=1) # Drag coefficient, grain proximal velocity 
-Schmeeckle_2007_CD_u[:,0] = Schmeeckle_2007_CD_u[:,0]/100 # Convert velocity to m/s
 
 # Find rolling mean and standard deviation 
 velocity_bins = np.linspace(min(Schmeeckle_2007_CD_u[:,0]),max(Schmeeckle_2007_CD_u[:,0])+0.2,21)
@@ -126,19 +157,6 @@ for i in range(0,len(velocity_bins)-1):
     cd_mean[i] = np.mean(Schmeeckle_2007_CD_u[temp,1])
     std_mean[i] = np.std(Schmeeckle_2007_CD_u[temp,1]) 
 
-#%% Experimental data from Wu and Shih (2012) table 1 
-
-data_1_u_pre = np.round(np.mean(Wu_mean_data_1_neg),decimals=3) # Averaged mean is same as found in Wu and Shih (2012) table 1
-data_1_sigma_pre = 0.04 # sigma From Wu and Shih (2012) table 1
-
-data_1_u_post = np.round(np.mean(Wu_mean_data_1_pos),decimals=3)
-data_1_sigma_post = 0.043
-
-data_2_u_pre = np.round(np.mean(Wu_mean_data_2_neg),decimals=3)
-data_2_sigma_pre = 0.023
-
-data_2_u_post = np.round(np.mean(Wu_mean_data_2_pos),decimals=3)
-data_2_sigma_post = 0.026 
 
 #%% Plot interpolated location 
 
@@ -167,7 +185,7 @@ Cd_data_1_mean_post = np.interp(data_1_u_post,velocity_bins,cd_mean)
 Cd_mean_2 = Cd_data_1_mean_post 
 
 Cd_data_1_mean = (Cd_data_1_mean_pre+Cd_data_1_mean_post)/2
-Cd_data_1_std = np.interp(data_1_u_post,velocity_bins,std_mean)
+Cd_data_1_std = np.round(np.std(Schmeeckle_2007_CD_u[:,1]),decimals=2) # Data too sparse for interpolation. Make generalized asumption using all data
 
 Cd_data_2_mean_pre = np.interp(data_2_u_pre,velocity_bins,cd_mean)
 Cd_data_2_mean_post = np.interp(data_2_u_post,velocity_bins,cd_mean)
@@ -177,17 +195,11 @@ Cd_mean_3 = Cd_data_2_mean_post
 
 #%% 
 
-Wu_data_1_rms_pre = 0.04
-Wu_data_1_rms_post = 0.043
+Wu_data_1_RMS_upper = np.append(Wu_mean_data_1_neg + data_1_sigma_pre/2,Wu_mean_data_1_pos + data_1_sigma_post/2)
+Wu_data_1_RMS_lower = np.append(Wu_mean_data_1_neg - data_1_sigma_pre/2,Wu_mean_data_1_pos - data_1_sigma_post/2)
 
-Wu_data_2_rms_pre = 0.023
-Wu_data_2_rms_post = 0.026
-
-Wu_data_1_RMS_upper = np.append(Wu_mean_data_1_neg + Wu_data_1_rms_pre/2,Wu_mean_data_1_pos + Wu_data_1_rms_post/2)
-Wu_data_1_RMS_lower = np.append(Wu_mean_data_1_neg - Wu_data_1_rms_pre/2,Wu_mean_data_1_pos - Wu_data_1_rms_post/2)
-
-Wu_data_2_RMS_upper = np.append(Wu_mean_data_2_neg + Wu_data_2_rms_pre/2,Wu_mean_data_2_pos + Wu_data_2_rms_post/2)
-Wu_data_2_RMS_lower = np.append(Wu_mean_data_2_neg - Wu_data_2_rms_pre/2,Wu_mean_data_2_pos - Wu_data_2_rms_post/2)
+Wu_data_2_RMS_upper = np.append(Wu_mean_data_2_neg + data_2_sigma_pre/2,Wu_mean_data_2_pos + data_2_sigma_post/2)
+Wu_data_2_RMS_lower = np.append(Wu_mean_data_2_neg - data_2_sigma_pre/2,Wu_mean_data_2_pos - data_2_sigma_post/2)
 
 #%% Plot experimental data from Wu and Shih (2012)
 
@@ -230,17 +242,6 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 
 #%% Monte Carlo simulation using Wu and Shih (2012) experimental constraints 
 
-C_l_min = 0.06
-C_d_min = 0.1
-
-C_l_max = 2 
-C_d_max = 3 
-
-C_l_stdv = 0.29
-C_d_stdv = 0.29
-
-C_l_mean = 0.19 # Assumed lower lift coefficient b/c low flow velocity
-
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step)
 
@@ -261,8 +262,6 @@ C_d_data_1 = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_3,Cd_data_2_std)
 C_d_data_2 = X.rvs(monte_carlo_step)
-
-V_w_V = 1 # Fully submerged grain  
 
 #%% Define deterministic force balance 
 # Wiberg and Smith (1987)
