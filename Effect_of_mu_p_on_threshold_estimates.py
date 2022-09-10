@@ -5,10 +5,17 @@ Created on Thu Jun  9 09:51:08 2022
 
 @author: scottfeehan
 
-This code is used to determine how changing assumed physical parameters will alter estimated entrainment thresholds. We vary effective firction coefficient (tan(phi) = mu) and grain protrusion (p) 
-and determine the influence of assumed or measured physical parameters on estimating mathematical fit coefficients. 
+This code generates figure 5.
 
-This code takes exceptionally long to run (20+ hr), be aware of the monte carlo iteration length and the number of grains tested when running script.  
+This code is used to determine how changing assumed physical parameters will alter estimated entrainment thresholds. 
+We vary effective firction coefficient (tan(phi) = mu) and grain protrusion (p) and determine the influence of assumed 
+or measured physical parameters on estimating mathematical fit coefficients. 
+
+Plots are of power law coefficients for critical velocity (u_c), shear velocity (u_s), shear stress (u_t), and Critcal 
+Shields (u_tc) with the associated uncertainty when assuming different physical parameters. 
+
+This code takes exceptionally long to run (20+ hr), be aware of the monte carlo iteration length and the number of grains 
+tested when running script.  
 
 """
 
@@ -17,7 +24,20 @@ import matplotlib.pyplot as plt
 from scipy.stats import iqr
 from scipy.stats import truncnorm
 
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameters 
+
+monte_carlo_step = 100000 # Monte Carlo iteration length
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+k_von = 0.407 # Von Karman constant
+
+# Range of grain sizes tested 
+Grain_size = np.arange(0.1,1.1,0.1)#np.arange(0.001,1.001,0.001)
+
+# Range of roughness locations tested
+ks_len = 10
+k_s_range = np.arange(1,6.2,0.1)
 
 #Sediment density 
 rho_s_mean = 2650 # Assumed mean
@@ -59,18 +79,23 @@ mu_stdv = 0.27
 ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
-# Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
+# Range of mu and p tested 
+mu_range = np.tan(np.deg2rad(np.arange(15,86,1)))
+p_range = np.arange(0.1,1.1,0.1)
+mu_stdv = 0.27  # from Booth
+finalmu = mu_range 
+finalsigma = mu_stdv
+mu_stdv = np.sqrt( np.log( finalsigma**2 / finalmu**2 + 1))
+mu_range = np.log(finalmu/np.exp(0.5*ln_mu_stdv**2))
 
+# Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
 #%% Create function to generate truncated normal distributions for force balaance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
-#%% 
-    
-monte_carlo_step = 100000 # Monte Carlo iteration length
+#%% Generate distribution of respective force balance parameter
 
-# Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
 
@@ -82,13 +107,6 @@ C_l = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
-
-#%% Constants
-        
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
-k_von = 0.407 # Von Karman constant
 
 #%% Define force balance 
 
@@ -103,21 +121,6 @@ def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p
     v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
     return v_c
 
-#%% Range of mu and p tested 
-
-mu_range = np.tan(np.deg2rad(np.arange(15,86,1)))
-p_range = np.arange(0.1,1.1,0.1)
-mu_stdv = 0.27  # from Booth
-
-finalmu = mu_range 
-finalsigma = mu_stdv
-mu_stdv = np.sqrt( np.log( finalsigma**2 / finalmu**2 + 1))
-mu_range = np.log(finalmu/np.exp(0.5*ln_mu_stdv**2))
-
-#%% Range of grain sizes tested 
-
-Grain_size = np.arange(0.001,1.001,0.001)
-
 #%% Calculate u_c and other threshold parameters 
 
 v_FB_median = np.zeros([len(Grain_size),len(mu_range),len(p_range)])
@@ -129,10 +132,6 @@ A_axis = B_axis
 C_axis = B_axis
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # assume perfect sphere volume 
 A = (B_axis/2)*(C_axis/2)*np.pi # area 
-
-ks_len = 10
-
-k_s_range = np.arange(1,6.2,0.1)
 
 u_shear_median = np.zeros([len(Grain_size),len(mu_range),len(p_range)])
 u_shear_iqr = np.zeros(np.shape(u_shear_median))
@@ -303,11 +302,10 @@ for i in range(0,len(p_range)):
 
 colors = plt.cm.viridis(np.linspace(0,1,len(p_range))) 
 
-mu_range = np.tan(np.deg2rad(np.arange(15,86,1)))
+mu_range = np.tan(np.deg2rad(np.arange(15,86,1))) # Change label back to degrees
 
 text_x = 60.5
 text_y = 0.25
-
 label_y = 0.9
 
 plt.figure(figsize=(16,18))
@@ -466,32 +464,5 @@ plt.tick_params(bottom=True,top=True,left=True,right=True,which='both')
 plt.minorticks_on()
 plt.xlim([min(np.rad2deg(np.arctan(mu_range))),max(np.rad2deg(np.arctan(mu_range)))])
 plt.tight_layout()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
