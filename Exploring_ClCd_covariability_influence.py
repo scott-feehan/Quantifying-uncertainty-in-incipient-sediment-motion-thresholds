@@ -5,7 +5,14 @@ Created on Tue May 24 13:00:56 2022
 
 @author: scottfeehan
 
-Determining the effect of covariability between the drag and lift coefficient on estimating critical flow  
+
+This code generates figure 3.
+
+Plotting the estimated changes to the critical velocity mean and inter quartile 
+range (IQR) for a single grain size through assuming various correlations 
+between the drag coefficiant (C_d_ and the lift coefficient (C_l). Compare 
+uncorrelated to perfectly correlated with intermediate levels of correlation, 
+all tested with the primary assumption that on average C_l ~0.5C_d. 
 
 """
 
@@ -16,7 +23,17 @@ from scipy.stats import truncnorm
 import seaborn as sns
 from scipy.stats import pearsonr
 
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameters 
+
+monte_carlo_step = 1000000 # Monte Carlo iteration length
+
+C_d_x = np.arange(0.001,2.1,0.1) #Example Cd values to plot a line
+
+# Constants
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+GrainSize = 0.1
 
 #Sediment density 
 rho_s_mean = 2650 # Assumed mean
@@ -35,7 +52,7 @@ C_d_mean = 0.76
 C_d_min = 0.1
 C_d_max = 3 
 C_d_stdv = 0.29
-
+ 
 # Lift coefficient 
 C_l_mean = 0.38
 C_l_min = 0.06
@@ -67,8 +84,6 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 
 #%% 
     
-monte_carlo_step = 1000000 # Monte Carlo iteration length
-
 # Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
@@ -96,15 +111,7 @@ while True:
     if len(temp[0]) <1:
         break 
 
-#%% Constants
-        
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
-
 #%% Sginle grain size
-
-GrainSize = 0.1
 
 B_axis = GrainSize
 A_axis = B_axis
@@ -143,10 +150,6 @@ C_d_C_l_typical_x = np.linspace(min(C_d_typical),max(C_d_typical),10) # Generate
 C_d_C_l_typical_y = C_d_C_l_line_typical[0]*C_d_C_l_typical_x + C_d_C_l_line_typical[1] # Calculate dependent variables to plot line on data
 
 v_ForceBalance_typical = ForceBalance(rho_s,rho_w,g,mu,C_l_typical,C_d_typical,theta,A_axis,B_axis,C_axis,V_w_V,V,A_p,p)
-
-#%% Example Cd values to plot a line 
-
-C_d_x = np.arange(0.001,2.1,0.1)
 
 #%% Generate Cl values that are linearly related to Cd with some scatter 
 # Cl = a * Cd + b 
@@ -268,9 +271,8 @@ C_d_C_l_pR_stdv_01_neg = pearsonr(C_d_stdv_01_neg,C_l_stdv_01_neg)
 v_ForceBalance_stdv_01_neg = ForceBalance(rho_s,rho_w,g,mu,C_l_stdv_01_neg,C_d_stdv_01_neg,theta,A_axis,B_axis,C_axis,V_w_V,V,A_p,p)
 
 #%% Generate positive and negative relationship with no scatter 
- 
+
 covariance_scale = 0.5 # Cl is equal to 1/2 of Cd
-C_d_x = np.arange(0.01,2.1,0.1)
 
 # Positive 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
