@@ -33,7 +33,7 @@ V_w_V = 1 # Fully submerged grain
 k_von = 0.407 # Von Karman constant
 
 # Range of grain sizes tested 
-Grain_size = np.arange(0.1,1.1,0.1)#np.arange(0.001,1.001,0.001)
+Grain_size = np.arange(0.001,1.001,0.001)
 
 # Range of roughness locations tested
 ks_len = 10
