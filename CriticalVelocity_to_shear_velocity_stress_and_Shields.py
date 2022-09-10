@@ -5,8 +5,13 @@ Created on Thu Jun  2 14:07:24 2022
 
 @author: scottfeehan
 
-Converting  critical velocty (u_c) to shear velocity (u_s), shear stress (tau) and Shield's stress  tau_c. Assuming that the roughness layer (k_s) thickness is equally probable to be from  k_s  = 1 *  D  to  k_s  = 6.1 *  D  where  D  is grain size. 
-A k_s value is randomly selected from that range for each iteration of the Monte Carlo simulation. Within that k_s, the top of the grain is randomly selected, with equal probability, to be located from  k_s/30 +  D  to  k_s
+This code generates figure 2.
+
+Converting  critical velocty (u_c) to shear velocity (u_s), shear stress (tau) and Shield's stress (tau_c). 
+Assuming that the roughness layer (k_s) thickness is equally probable to be from  k_s  = 1 *  D  to  k_s  = 6.1 *  D  
+where  D  is grain size. A k_s value is randomly selected from that range for each iteration of the Monte Carlo 
+simulation. Within that k_s, the top of the grain is randomly selected, with equal probability, to be located 
+from  k_s/30 +  D  to  k_s.
 
 """
 
@@ -16,7 +21,19 @@ from scipy.stats import iqr
 from scipy.stats import truncnorm
 import matplotlib as mpl
 
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameters 
+
+monte_carlo_step = 100000 # Monte Carlo iteration length
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+k_von = 0.41 # Von Karman constant
+Grain_size = np.arange(0.001,1.001,0.001)
+Slope_value = 10**-3
+Slope = np.ones(np.shape(Grain_size))*Slope_value
+
+ks_len = 10 # Discritization of locations within the roughness layer where the grain can sit
+k_s_range = np.arange(1,6.2,0.1) # Range of roughness layer "ks" multiplier values
 
 # Sediment density 
 rho_s_mean = 2650 # Assumed mean
@@ -67,8 +84,6 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 
 #%% 
     
-monte_carlo_step = 100 # Monte Carlo iteration length
-
 # Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
@@ -96,13 +111,6 @@ while True:
     if len(temp[0]) <1:
         break 
 
-#%% Constants
-        
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
-k_von = 0.41 # Von Karman constant
-
 #%% Define force balance 
 
 def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
@@ -115,13 +123,6 @@ def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p
     A_p[np.where(p < 0.5)] = np.pi * (a**2)
     v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
     return v_c 
-
-#%% Grain size range 
-# Calculate grain dimensions
-
-Grain_size = np.arange(0.001,1.001,0.001)
-Slope_value = 10**-3
-Slope = np.ones(np.shape(Grain_size))*Slope_value
 
 #%% 
 
@@ -149,14 +150,10 @@ for i in range(0,len(Grain_size)):
     v_FB_iqr[i] = iqr(v_ForceBalance[:,i],nan_policy='omit')
     v_FB_90[i] = iqr(v_ForceBalance[:,i],rng=(5,95),nan_policy='omit')
 
-
 v_FB_iqr = v_FB_iqr/2
 v_FB_90 = v_FB_90/2
 
 #%% 
-
-ks_len = 10 # Discritization of locations within the roughness layer where the grain can sit
-k_s_range = np.arange(1,6.2,0.1) # Range of roughness layer "ks" multiplier values
 
 u_shear = np.zeros([len(Grain_size),len(v_ForceBalance)])
 t_shear_stress = np.zeros(np.shape(u_shear))
@@ -344,7 +341,7 @@ x_lim = [0.001,1]
 plt.figure(figsize=(9,15))
 # Critical velocity
 plt.subplot(411)
-plt.hist2d(v_critical[:,0],v_critical[:,1],bins=(x_space,y_space),cmin=min_counts,norm=mpl.colors.Normalize(), cmap=colormap,vmax=max_counts) # Grain size X, critival velocity Y
+plt.hist2d(v_critical[:,0],v_critical[:,1],bins=(x_space,y_space),cmin=min_counts,norm=mpl.colors.Normalize(vmax=max_counts), cmap=colormap) # Grain size X, critival velocity Y
 plt.plot(Grain_size,v_FB_median,color=line_color,linewidth=3,label='Median') # Median fit of critical velocity for each grain size
 plt.plot(Grain_size,v_FB_median+v_FB_iqr,c=line_color,linestyle='--',linewidth=3,label='IQR') # Upper IQR bound 
 plt.plot(Grain_size,v_FB_median-v_FB_iqr,c=line_color,linestyle='--',linewidth=3) # Lower IQR bound 
@@ -362,7 +359,7 @@ plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[
 
 # Shear velocity
 plt.subplot(412)
-plt.hist2d(u_shear_heatmap[:,0],u_shear_heatmap[:,1],bins=(u_shear_x_space,u_shear_y_space),cmin=min_counts,norm=mpl.colors.Normalize(), cmap=colormap,vmax=max_counts)
+plt.hist2d(u_shear_heatmap[:,0],u_shear_heatmap[:,1],bins=(u_shear_x_space,u_shear_y_space),cmin=min_counts,norm=mpl.colors.Normalize(vmax=max_counts), cmap=colormap)
 plt.plot(Grain_size,u_shear_median,color=line_color,linewidth=3,label='m = '+str(np.round(m_shear,decimals=3))+' +/- '+str(np.round(m_shear_iqr - m_shear,decimals=3)))
 plt.plot(Grain_size,u_shear_median+u_shear_iqr,c=line_color,linestyle='--',linewidth=3)
 plt.plot(Grain_size,u_shear_median-u_shear_iqr,c=line_color,linestyle='--',linewidth=3)
@@ -378,7 +375,7 @@ plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[
 
 # Shear stress
 plt.subplot(413)
-plt.hist2d(t_shear_heatmap[:,0],t_shear_heatmap[:,1],bins=(t_shear_x_space,t_shear_y_space),cmin=min_counts,norm=mpl.colors.Normalize(), cmap=colormap,vmax=max_counts)
+plt.hist2d(t_shear_heatmap[:,0],t_shear_heatmap[:,1],bins=(t_shear_x_space,t_shear_y_space),cmin=min_counts,norm=mpl.colors.Normalize(vmax=max_counts), cmap=colormap)
 plt.plot(Grain_size,t_shear_stress_median,color=line_color,linewidth=3,label='m = '+str(np.round(m_t_shear,decimals=3))+' +/- '+str(np.round(m_t_shear_iqr - m_t_shear,decimals=3)))
 plt.plot(Grain_size,t_shear_stress_median+t_shear_stress_iqr,c=line_color,linestyle='--',linewidth=3)
 plt.plot(Grain_size,t_shear_stress_median-t_shear_stress_iqr,c=line_color,linestyle='--',linewidth=3)
@@ -394,7 +391,7 @@ plt.text(x_lim[0] + (x_lim[1] - x_lim[0])*x_text , y_lim[0] + (y_lim[1] - y_lim[
 
 # Shields stress
 plt.subplot(414)
-im = plt.hist2d(t_shields_heatmap[:,0],t_shields_heatmap[:,1],bins=(t_shields_x_space,t_shields_y_space),cmin=min_counts,norm=mpl.colors.Normalize(), cmap=colormap,vmax=max_counts)
+im = plt.hist2d(t_shields_heatmap[:,0],t_shields_heatmap[:,1],bins=(t_shields_x_space,t_shields_y_space),cmin=min_counts,norm=mpl.colors.Normalize(vmax=max_counts), cmap=colormap)
 plt.plot(Grain_size,t_shields_stress_median,color=line_color,linewidth=3,label='m = '+str(np.round(m_t_shields,decimals=3))+' +/- '+str(np.round(m_t_shields_iqr - m_t_shields,decimals=3)))
 plt.plot(Grain_size,t_shields_stress_median+t_shields_stress_iqr,Grain_size,t_shields_stress_median-t_shields_stress_iqr,c=line_color,linestyle='--',linewidth=3)
 plt.plot(Grain_size,t_shields_stress_median+t_shields_stress_90,c=line_color,linestyle=':',linewidth=3)
@@ -414,6 +411,5 @@ plt.tight_layout(h_pad=1)
 # Add colorbar to the bottom of the plot 
 cbar = plt.colorbar(orientation="horizontal")
 cbar.ax.tick_params(labelsize=14,size=6)
-cbar.ax.set_xticklabels(labels=('0.2','0.4','0.6','0.8','1.0'),fontsize=14)
+cbar.ax.set_xticklabels(labels=('0','0.2','0.4','0.6','0.8','1.0'),fontsize=14)
 cbar.set_label('Relative probability', fontsize=14)
-
