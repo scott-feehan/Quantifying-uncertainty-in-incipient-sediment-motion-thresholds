@@ -5,7 +5,7 @@ Created on Mon Jun  6 13:57:46 2022
 
 @author: scottfeehan
 
-This code generates parts of figure 3
+This code generates parts of figure 4
 
 Comparing theoretical estiamtes of critical velocity to idealized experiments from Wu and Shih (2012).
 Theoretical estimates are refined using identical constraints when avaliable (e.g. Prostrusion and Coefficeint of friction) 
@@ -22,11 +22,11 @@ from scipy.stats import iqr
 #%% Uploading data
 
 # Experimental flume data
-filepath = 'Wu_2012_Experiment_1.csv'
-Wu_dataset_1 = np.loadtxt(filepath,delimiter=',')
+filepath = 'Wu_Shih_2012_Experiment_1.csv'
+Wu_dataset_1 = np.loadtxt(filepath,delimiter=',',skiprows=1)
 
-filepath = 'Wu_2012_Experiment_2.csv'
-Wu_dataset_2 = np.loadtxt(filepath,delimiter=',')
+filepath = 'Wu_Shih_2012_Experiment_2.csv'
+Wu_dataset_2 = np.loadtxt(filepath,delimiter=',',skiprows=1)
 
 # Near grain velocity - Drag coefficient observations
 filepath = filepath = 'Schmeeckle_fig_10c.txt'

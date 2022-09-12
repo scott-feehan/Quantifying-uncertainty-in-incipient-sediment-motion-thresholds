@@ -5,7 +5,9 @@ Created on Tue May 24 09:12:13 2022
 
 @author: scottfeehan
 
-Using deterministic force balance model and Monte Carlo simulations to estimate critical velocity and associated uncertainty 
+Example code for using deterministic force balance model and Monte Carlo 
+simulations to estimate critical velocity and associated uncertainty for an 
+individual and range of grain sizes. 
 
 """
 
@@ -15,7 +17,14 @@ from scipy.stats import truncnorm
 from scipy.stats import iqr
 import seaborn as sns
 
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameter
+
+monte_carlo_step = 100000 # Monte Carlo iteration length
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+k_von = 0.41 # Von Karman constant
+Grain_size = 0.1 # Example grain size 
 
 #Sediment density 
 rho_s_mean = 2650 # Assumed mean
@@ -64,8 +73,6 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 
 #%% Generate force balance parameter distributions 
     
-monte_carlo_step = 100000 # Monte Carlo iteration length
-
 # Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
@@ -90,11 +97,6 @@ while True:
     mu[temp] = np.random.lognormal(ln_mu,ln_mu_stdv,len(temp[0]))
     if len(temp[0]) <1:
         break 
-
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
-k_von = 0.41 # Von Karman constant
     
 #%% Define deterministic force balance 
 # Wiberg and Smith (1987)
@@ -112,33 +114,12 @@ def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p
     
 #%% Calculate critical velocity (u_c) for grain entrainment using a Monte Carlo method for a single grain size
 
-Grain_size = 0.1 # Example grain size 
-
 # Calculate grain dimensions
 B_axis = Grain_size # Intermediate axis
 A_axis = B_axis # Long axis 
 C_axis = B_axis # Short axis 
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # Volume of a sphere 
 A = (B_axis/2)*(C_axis/2)*np.pi # Area
-
-# Monte Carlo simulation for single grain size 
-v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) 
-
-# Calculate statistics of distribution 
-v_FB_median = np.nanmedian(v_ForceBalance) # Median while excluding NaN values 
-v_FB_iqr = iqr(v_ForceBalance,nan_policy='omit')/2 # Interquartile range, divide by 2 so it can be added to the median value in a plot
-v_FB_90 = iqr(v_ForceBalance,rng=(5,95),nan_policy='omit')/2 # 5th to 95th percentile
-
-#%% 
-
-Grain_size = 0.1 # Example grain size 
-
-# Calculate grain dimensions
-B_axis = Grain_size # Intermediate axis
-A_axis = B_axis # Long axis 
-C_axis = B_axis # Short axis 
-V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi # Volume of a sphere 
-A = (B_axis/2)*(C_axis/2)*np.pi # Area normal to the flow 
 
 # Monte Carlo simulation for single grain size 
 v_ForceBalance = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p) 
@@ -165,27 +146,27 @@ plt.tick_params(which='minor',length=5)
 
 #%% Perform Monte Carlo simulation for grain sizes 1 mm to 1 m at a 1 mm resolution
 
-Grain_size = np.arange(0.001,1.001,0.001) # Range of grain sizes to sample over
+Grain_size_range = np.arange(0.001,1.001,0.001) # Range of grain sizes to sample over
 
-v_ForceBalance = np.zeros([int(monte_carlo_step),len(Grain_size)]) # Empty array to store Monte Carlo velocity estimates
+v_ForceBalance = np.zeros([int(monte_carlo_step),len(Grain_size_range)]) # Empty array to store Monte Carlo velocity estimates
 
 # Calculate grain dimensions
-B_axis = Grain_size
+B_axis = Grain_size_range
 A_axis = B_axis
 C_axis = B_axis
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi
 A = (B_axis/2)*(C_axis/2)*np.pi
 
 
-for i in range(0,len(Grain_size)): # Monte Carlo simulation across grain sizes
+for i in range(0,len(Grain_size_range)): # Monte Carlo simulation across grain sizes
     v_ForceBalance[:,i] = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis[i],B_axis[i],C_axis[i],V_w_V,V[i],A[i],p)
 
 # Calculate statistics of distribution 
-v_FB_median = np.zeros(len(Grain_size))
-v_FB_iqr = np.zeros(len(Grain_size))
-v_FB_90 = np.zeros(len(Grain_size))
+v_FB_median = np.zeros(len(Grain_size_range))
+v_FB_iqr = np.zeros(len(Grain_size_range))
+v_FB_90 = np.zeros(len(Grain_size_range))
 
-for i in range(0,len(Grain_size)):
+for i in range(0,len(Grain_size_range)):
     
     v_FB_median[i] = np.nanmedian(v_ForceBalance[:,i])
     v_FB_iqr[i] = iqr(v_ForceBalance[:,i],nan_policy='omit')
@@ -197,16 +178,16 @@ v_FB_90 = v_FB_90/2
 #%% Plot calculated statistics across grain size range
 
 plt.figure(figsize=(6,5))
-plt.plot(Grain_size,v_FB_median,'r',label='Median')
-plt.fill_between(Grain_size,v_FB_median - v_FB_iqr,v_FB_median + v_FB_iqr,color='r',alpha=0.2,label='IQR')
-plt.plot(Grain_size,v_FB_median + v_FB_90,'r',linestyle='--',label='5$^{th}$ to 95$^{th}$')
-plt.plot(Grain_size,v_FB_median - v_FB_90,'r',linestyle='--')
+plt.plot(Grain_size_range,v_FB_median,'r',label='Median')
+plt.fill_between(Grain_size_range,v_FB_median - v_FB_iqr,v_FB_median + v_FB_iqr,color='r',alpha=0.2,label='IQR')
+plt.plot(Grain_size_range,v_FB_median + v_FB_90,'r',linestyle='--',label='5$^{th}$ to 95$^{th}$')
+plt.plot(Grain_size_range,v_FB_median - v_FB_90,'r',linestyle='--')
 plt.legend(fontsize=14)
 plt.xlabel('Grain size, $D$ ($m$)',fontsize=14)
 plt.ylabel('Critical velocity, $u_c$ ($m/s$)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
-plt.xlim([min(Grain_size),max(Grain_size)])
+plt.xlim([min(Grain_size_range),max(Grain_size_range)])
 plt.tight_layout()
 
