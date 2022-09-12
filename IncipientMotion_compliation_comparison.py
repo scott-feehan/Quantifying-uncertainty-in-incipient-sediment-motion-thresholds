@@ -5,7 +5,13 @@ Created on Tue Jun  7 16:33:18 2022
 
 @author: scottfeehan
 
-Comparison of field and flume compliation with theoretical estimates of shear velocity 
+This code generates part of figure 4. 
+
+Comparison of compilation of field and flume experiments, observations, and 
+estimates of flow conditions at incipient motion for the median or D50 grain 
+size to theoretical estimates. Shear velocity (u_shear) is used for comparison
+to incorporate additional reported parameters rather than inferred Shields 
+values. 
 
 """
 
@@ -17,55 +23,56 @@ from scipy.stats import iqr
 
 #%% 
 
-filepath = 'Shields_comp_field.csv' 
+#filepath = 'Shields_comp_field.csv' 
+filepath = 'Shields_compilation_field.csv'
 Shields_comp_field = pd.read_csv(filepath)
 
-filepath = 'Shields_comp_flume.csv' 
+#filepath = 'Shields_comp_flume.csv' 
+filepath = 'Shields_compilation_flume.csv'
 Shields_comp_flume = pd.read_csv(filepath)
 
 #%% 
 
 Shields_stress_field = Shields_comp_field['Shields stress'].to_numpy()
-Slope_field = Shields_comp_field['slope (m/m)'].to_numpy()
-D50_field = Shields_comp_field['median grain size (cm)'].to_numpy()/100
-Flow_depth_field = Shields_comp_field['flow depth (cm)'].to_numpy()/100
-Sediment_density_field = Shields_comp_field['density (g/cm3)'].to_numpy()*1000
-Reynolds_field = Shields_comp_field['Re (reported)'].to_numpy()
-D84_field = (Shields_comp_field['median grain size (cm)'].to_numpy() + Shields_comp_field['phi'].to_numpy())/100
+Slope_field = Shields_comp_field['slope'].to_numpy()
+D50_field = Shields_comp_field['median grain size (m)'].to_numpy()#/100
+Flow_depth_field = Shields_comp_field['flow depth (m)'].to_numpy()#/100
+Sediment_density_field = Shields_comp_field['density (kg/m3)'].to_numpy()#*1000
 
 Shields_stress_flume = Shields_comp_flume['Shields stress'].to_numpy()
-Slope_flume = Shields_comp_flume['slope (m/m)'].to_numpy()
-D50_flume = Shields_comp_flume['median grain size (cm)'].to_numpy()/100
-Flow_depth_flume = Shields_comp_flume['flow depth (cm)'].to_numpy()/100
-Sediment_density_flume = Shields_comp_flume['density (g/cm3)'].to_numpy()*1000
-Reynolds_flume = Shields_comp_flume['Re (reported)'].to_numpy()
-D84_flume = (Shields_comp_flume['median grain size (cm)'].to_numpy() + Shields_comp_flume['phi'].to_numpy())/100
+Slope_flume = Shields_comp_flume['slope'].to_numpy()
+D50_flume = Shields_comp_flume['median grain size (m)'].to_numpy()
+Flow_depth_flume = Shields_comp_flume['flow depth (m)'].to_numpy()
+Sediment_density_flume = Shields_comp_flume['density (kg/m3)'].to_numpy()
 
 #%% Thresholding with slope and grain size 
 
+# Field data 
 temp = np.where((Slope_field <= 0.05) & (D50_field >= 0.001))
-
 Shields_stress_field = Shields_stress_field[temp[0]]
 Slope_field = Slope_field[temp]
 D50_field = D50_field[temp]
 Flow_depth_field = Flow_depth_field[temp]
 Sediment_density_field = Sediment_density_field[temp]
-Reynolds_field = Reynolds_field[temp]
-D84_field = D84_field[temp]
 
-
+# Flume data 
 temp = np.where((Slope_flume <= 0.05) & (D50_flume >= 0.001))
-
 Shields_stress_flume = Shields_stress_flume[temp[0]]
 Slope_flume = Slope_flume[temp]
 D50_flume = D50_flume[temp]
 Flow_depth_flume = Flow_depth_flume[temp]
 Sediment_density_flume = Sediment_density_flume[temp]
-Reynolds_flume = Reynolds_flume[temp]
-D84_flume = D84_flume[temp]
 
-
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+#%% Constants and parameter
+     
+monte_carlo_step = 100000 # Monte Carlo iteration length
+    
+g = 9.81 # Gravity 
+theta = 0.001 # Constant slope 
+V_w_V = 1 # Fully submerged grain  
+k_von = 0.407 # Von Karman constant
+k_s_location = 1 # Location of grain within the roughness layer 
+grain_range = np.arange(0.0001,1.001,0.001) # Range of grain sizes to test theory 
 
 #Sediment density 
 rho_s_mean = 2650 # Assumed mean
@@ -107,15 +114,32 @@ mu_stdv = 0.58
 ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
+#%% Calculate the shear velocity 
+
+Shear_velocity_field = ((Shields_stress_field*(Sediment_density_field - rho_w_mean)*g*D50_field)/rho_w_mean)**0.5
+
+Shear_velocity_flume = ((Shields_stress_flume*(Sediment_density_flume - rho_w_mean)*g*D50_flume)/rho_w_mean)**0.5
+
 #%% Create function to generate truncated normal distributions for force balaance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
+#%% Define force balance 
+
+def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
+    r = B_axis/2
+    A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
+    A_e = A - A_e
+    A_p = np.ones(len(p))*A
+    h = B_axis*p[np.where(p < 0.5)]
+    a = np.sqrt(r**2 - ((r - h)**2))
+    A_p[np.where(p < 0.5)] = np.pi * (a**2)
+    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
+    return v_c
+
 #%% 
     
-monte_carlo_step = 100000 # Monte Carlo iteration length
-
 # Generate distribution of respective force balance parameter
 X = get_truncated_normal(rho_s_max ,rho_s_min,rho_s_mean,rho_s_stdv ) 
 rho_s = X.rvs(monte_carlo_step) 
@@ -141,32 +165,6 @@ while True:
     mu[temp] = np.random.lognormal(ln_mu,ln_mu_stdv,len(temp[0]))
     if len(temp[0]) <1:
         break 
-
-#%% Constants
-        
-g = 9.81 # Gravity 
-theta = 0.001 # Constant slope 
-V_w_V = 1 # Fully submerged grain  
-k_von = 0.407 # Von Karman constant
-
-#%% Convert reported tau_c to u_*
-
-Shear_velocity_field = ((Shields_stress_field*(Sediment_density_field - rho_w_mean)*g*D50_field)/rho_w_mean)**0.5
-
-Shear_velocity_flume = ((Shields_stress_flume*(Sediment_density_flume - rho_w_mean)*g*D50_flume)/rho_w_mean)**0.5
-
-#%% Define force balance 
-
-def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
-    r = B_axis/2
-    A_e = r**2*np.arccos((r - (B_axis-(p*B_axis)))/r) - (r - (B_axis-(p*B_axis)))*np.sqrt(2*r*(B_axis-(p*B_axis)) - (B_axis-(p*B_axis))**2)
-    A_e = A - A_e
-    A_p = np.ones(len(p))*A
-    h = B_axis*p[np.where(p < 0.5)]
-    a = np.sqrt(r**2 - ((r - h)**2))
-    A_p[np.where(p < 0.5)] = np.pi * (a**2)
-    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_e + mu*C_l*A_p))**0.5
-    return v_c
 
 #%% Estimate theoretical threshold for D50 of each compilation using a Monte Carlo simulation and compilation constraints
 
@@ -224,7 +222,6 @@ v_FB_iqr_flume = v_FB_iqr_flume/2
 
 #%% Calculate u_s, tau, and tau_c from simulated critical velocity
 
-k_s_location = 1
 Velocity = v_ForceBalance_field
 Grain_size = D50_field
 u_shear = np.zeros([len(Grain_size),monte_carlo_step]) # Place to store shear velocity values 
@@ -285,8 +282,6 @@ u_shear_iqr_flume = u_shear_iqr/2
 
 #%% Calculate theoretical critical velocity and other flow parameters to determine where the reported data sits relative to theory
 
-grain_range = np.arange(0.0001,1.001,0.001)
-
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(grain_range)])
 
 B_axis = grain_range
@@ -294,7 +289,6 @@ A_axis = B_axis
 C_axis = B_axis
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi
 A = (A_axis/2)*(B_axis/2)*np.pi
-theta = 10**-3
 
 for i in range(0,len(grain_range)):
         
@@ -316,7 +310,6 @@ Grain_size_plot_iqr = v_FB_iqr
 #%% 
 
 Velocity = v_ForceBalance
-k_s_location = 1 
 
 Grain_size = grain_range
 u_shear = np.zeros([len(Grain_size),monte_carlo_step]) 
