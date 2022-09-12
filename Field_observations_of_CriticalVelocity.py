@@ -5,7 +5,12 @@ Created on Mon Jun  6 16:35:57 2022
 
 @author: scottfeehan
 
-Comparing theoretical critical velocity to highly constrainted field observations of incipient motion
+This code generates parts of figure 4
+
+Comparing theoretical critical velocity to highly constrainted field observations 
+of incipient motion. Use simplified force balance for theoretical estimates 
+because grains are non-spherical. Protrusion is treated as a multiplier to 
+the grain size rather than calculating the exposed area.  
 
 """
 
@@ -14,27 +19,21 @@ import matplotlib.pyplot as plt
 from scipy.stats import iqr
 from scipy.stats import truncnorm
 
-#%% 
+#%% Import field data
 
-filepath = 'Helley_Table_1_all.txt'
-Helley_1969_table_1 = np.loadtxt(filepath,skiprows=1) #particle_num	C	B	A	rho_s	Vol	calc_v 
-Helley_1969_table_1[:,(1,2,3,6)] = Helley_1969_table_1[:,(1,2,3,6)]*0.3048 # Convert to meters 
-Helley_1969_table_1[:,4] = Helley_1969_table_1[:,4]*1000 # Convert mass to kg/m^3
-Helley_1969_table_1[:,5] = Helley_1969_table_1[:,5]*0.0283 # Convert volume to m^3
+filepath = 'Helley_1969.csv'
+Helley_1969 = np.loadtxt(filepath,delimiter =',',skiprows=1)
 
-#%% 
+#%% Constants and parameters 
 
-filepath  = 'Helley_1969_fig_9.txt'
-Helley_1969_fig_9 = np.loadtxt(filepath,skiprows=1) # measured, calculated 
-Helley_1969_fig_9 = Helley_1969_fig_9*0.3048
+monte_carlo_step = 100000 # Monte Carlo iteration length
 
-Helley_1969_all_data = Helley_1969_table_1[Helley_1969_table_1[:, -1].argsort()]
-Helley_1969_all_data[:,6] = np.sort(Helley_1969_fig_9[:,0])
-
-#%% Assumed force balance parameter mean, minimum, maximum, and standard deviation
+g = 9.81 # Gravity 
+theta = 0.006 # reported local slope
+V_w_V = 1 # Fully submerged grain  
 
 #Sediment density 
-rho_s_mean = np.mean(Helley_1969_all_data[:,4])  
+rho_s_mean = np.mean(Helley_1969[:,4])  
 
 # Fluid density 
 rho_w_mean = 1000 
@@ -55,13 +54,13 @@ C_l_max = 2
 C_l_stdv = 0.29
 
 # Grain protrusion 
-p_mean = 0.7
+p_mean = 0.9
 p_min = 0.1
 p_max = 1
-p_stdv = 0.4
+p_stdv = 0.2
 
 # Coefficient of friction
-mu_mean = 0.58 # Grains are sitting on the top of the bed
+mu_mean = 0.7 # Grains are sitting on the top of the bed
 mu_min = 0.27
 mu_max =  11.4
 mu_stdv = 0.27 
@@ -69,18 +68,28 @@ mu_stdv = 0.27
 # Converting mu mean and standard deviation to lognormal space
 ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
-
 # Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
+
+#%% Measurements of grain long (A), intermediate (B), and short (C) axes 
+
+A_B = np.mean(Helley_1969[:,3]/Helley_1969[:,2])
+C_B = np.mean(Helley_1969[:,1]/Helley_1969[:,2])
+grain_range = np.arange(0.001,1.001,0.001) # Range of grain sizes for general case 
+
 
 #%% Create function to generate truncated normal distributions for force balaance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
+#%% Using simplified force balance due to high assumed protrusion and non-spherical grains 
+
+def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A_n,A_p,p):
+    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_n*p + mu*C_l*A_p))**0.5
+    return v_c
+
 #%% 
     
-monte_carlo_step = 100000 # Monte Carlo iteration length
-
 X = get_truncated_normal(rho_w_max,rho_w_min,rho_w_mean,rho_w_stdv)
 rho_w = X.rvs(monte_carlo_step) 
 
@@ -104,27 +113,7 @@ while True:
     if len(temp[0]) <1:
         break 
 
-#%% Constants
-        
-g = 9.81 # Gravity 
-theta = 0.006 # reported local slope
-V_w_V = 1 # Fully submerged grain  
-k_von = 0.407 # Von Karman constant
-
-#%% Using simplified force balance due to high assumed protrusion and non-spherical grains 
-
-def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A_n,A_p,p):
-    v_c = ((2*g*V*(rho_s/rho_w - 1*(V_w_V))*(mu*np.cos(theta) - np.sin(theta)))/(C_d*A_n*p + mu*C_l*A_p))**0.5
-    return v_c
-
-#%% Measurements of grain long (A), intermediate (B), and short (C) axes 
-
-A_B = np.mean(Helley_1969_all_data[:,3]/Helley_1969_all_data[:,2])
-C_B = np.mean(Helley_1969_all_data[:,1]/Helley_1969_all_data[:,2])
-
 #%% Generate power law using physical constraints from observations 
-
-grain_range = np.arange(0.001,1.001,0.001)
 
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(grain_range)])
 
@@ -134,7 +123,7 @@ C_axis = B_axis*C_B
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi
 A_n = (B_axis/2)*(C_axis/2)*np.pi
 A_p = (A_axis/2)*(B_axis/2)*np.pi
-theta = 10**-3
+#theta = 10**-3
 
 for i in range(0,len(grain_range)):
         
@@ -162,15 +151,14 @@ v_c_1_1_iqr_90 = np.transpose(v_c_1_1_iqr_90)
 
 #%% Monte carlo simulaiton to determine critical velocity of observed grains 
 
-B_axis = Helley_1969_all_data[:,2]
-A_axis = Helley_1969_all_data[:,1]
-C_axis = Helley_1969_all_data[:,3]
-V = Helley_1969_all_data[:,5]
-rho_s = Helley_1969_all_data[:,4]
+B_axis = Helley_1969[:,2]
+A_axis = Helley_1969[:,1]
+C_axis = Helley_1969[:,3]
+V = Helley_1969[:,5]
+rho_s = Helley_1969[:,4]
 rho_w = 1000
 A_n = (B_axis/2)*(C_axis/2)*np.pi
 A_p = (A_axis/2)*(B_axis/2)*np.pi
-theta = 0.006
 
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(B_axis)])
 
@@ -192,7 +180,7 @@ v_FB_iqr = v_FB_iqr/2
 
 plt.figure(figsize=(9,5))
 plt.fill_between(v_c_1_1_iqr_90[:,0],v_c_1_1_iqr_90[:,0]+v_c_1_1_iqr_90[:,1],v_c_1_1_iqr_90[:,0]-v_c_1_1_iqr_90[:,1],color='r',alpha=0.2,label='IQR')
-plt.scatter(v_FB_median,Helley_1969_all_data[:,6],c=Helley_1969_all_data[:,1]/np.sqrt(Helley_1969_all_data[:,2]*Helley_1969_all_data[:,3]),cmap = 'PuOr',marker='d',s=150,edgecolor='k',label='Helley (1969)')
+plt.scatter(v_FB_median,Helley_1969[:,6],c=Helley_1969[:,1]/np.sqrt(Helley_1969[:,2]*Helley_1969[:,3]),cmap = 'PuOr',marker='d',s=75,edgecolor='k',label='Helley (1969)')
 plt.plot(v_c_1_1_iqr_90[:,0],v_c_1_1_iqr_90[:,0],'r',label='1:1')
 plt.plot(v_c_1_1_iqr_90[:,0],v_c_1_1_iqr_90[:,0] + v_c_1_1_iqr_90[:,2],'r--',label='95 to 5')
 plt.plot(v_c_1_1_iqr_90[:,0],v_c_1_1_iqr_90[:,0] - v_c_1_1_iqr_90[:,2],'r--')
@@ -209,26 +197,3 @@ cbar = plt.colorbar(orientation='vertical',pad=0.05)
 cbar.set_label(label=r'Tabular $\leftarrow$ CSF (C/$\sqrt{A*B}$) $\rightarrow$ Spherical',fontsize=14)
 cbar.ax.tick_params(labelsize=14)
 plt.tight_layout()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
