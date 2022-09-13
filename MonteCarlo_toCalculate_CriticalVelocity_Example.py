@@ -175,6 +175,17 @@ for i in range(0,len(Grain_size_range)):
 v_FB_iqr = v_FB_iqr/2
 v_FB_90 = v_FB_90/2
 
+#%% Determine relationship between grain size and the median specified flow parameter and uncertainty (IQR)
+# Critical velocity
+x = Grain_size_range
+y = v_FB_median
+y_iqr = v_FB_median + v_FB_iqr
+a,m = np.polyfit(np.log(x),np.log(y),1) # Fit between log of grain size and flow parameter
+m_v_median = np.round(np.e**m,decimals=2) # Convert from log-log linear space to calculate Power Law coefficeint
+a,m = np.polyfit(np.log(x),np.log(y_iqr),1) # Repeat fit for uncertainty in flow parameter
+m_v_iqr = np.e**m
+m_v_iqr = np.round(m_v_iqr - m_v_median,decimals=2)
+
 #%% Plot calculated statistics across grain size range
 
 plt.figure(figsize=(6,5))
@@ -182,6 +193,8 @@ plt.plot(Grain_size_range,v_FB_median,'r',label='Median')
 plt.fill_between(Grain_size_range,v_FB_median - v_FB_iqr,v_FB_median + v_FB_iqr,color='r',alpha=0.2,label='IQR')
 plt.plot(Grain_size_range,v_FB_median + v_FB_90,'r',linestyle='--',label='5$^{th}$ to 95$^{th}$')
 plt.plot(Grain_size_range,v_FB_median - v_FB_90,'r',linestyle='--')
+plt.text(0.5,0.5,'$m_c$ = '+str(m_v_median)+' +/- '+str(m_v_iqr),fontsize=14)
+plt.text(0.6,1.25,'$u_c = m_c D ^{0.5}$',fontsize=14)
 plt.legend(fontsize=14)
 plt.xlabel('Grain size, $D$ ($m$)',fontsize=14)
 plt.ylabel('Critical velocity, $u_c$ ($m/s$)',fontsize=14)
