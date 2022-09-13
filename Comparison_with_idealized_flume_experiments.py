@@ -290,7 +290,7 @@ v_data_2_90 = iqr(v_data_2,rng=(5,95),nan_policy='omit')/2
 
 #%% Plot velocity estimated from Monte Carlo on top of experimental observations
 
-x_lim = [-2,2]
+x_lim = [-2.1,2.1]
 plt.figure(figsize=(7,9))
 ax = plt.subplot(211)
 plt.scatter(Wu_data_1_t[0:len(Wu_mean_data_1_neg)],Wu_mean_data_1_neg,color='w',edgecolor='k',linewidth=2,s=75)
