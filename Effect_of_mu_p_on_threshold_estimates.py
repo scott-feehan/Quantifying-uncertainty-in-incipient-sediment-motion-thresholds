@@ -14,8 +14,8 @@ or measured physical parameters on estimating mathematical fit coefficients.
 Plots are of power law coefficients for critical velocity (u_c), shear velocity (u_s), shear stress (u_t), and Critcal 
 Shields (u_tc) with the associated uncertainty when assuming different physical parameters. 
 
-This code takes exceptionally long to run (20+ hr), be aware of the monte carlo iteration length and the number of grains 
-tested when running script.  
+Note: This code takes exceptionally long to run (20+ hr), be aware of the monte carlo iteration length (monte_carlo_step)
+and the number of grains (Grain_size) tested when running code.  
 
 """
 

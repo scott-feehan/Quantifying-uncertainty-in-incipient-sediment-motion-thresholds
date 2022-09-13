@@ -13,6 +13,10 @@ where  D  is grain size. A k_s value is randomly selected from that range for ea
 simulation. Within that k_s, the top of the grain is randomly selected, with equal probability, to be located 
 from  k_s/30 +  D  to  k_s.
 
+Note: This code may take multiple hours to run at current monte carlo iteration length (monte_carlo_step)
+and the number of grains (Grain_size) tested when running code. To reduce run time, decrease one or both 
+of these parameters. 
+
 """
 
 import numpy as np
