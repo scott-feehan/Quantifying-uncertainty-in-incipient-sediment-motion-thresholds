@@ -182,7 +182,7 @@ plt.tight_layout()
 
 Cd_data_1_mean_pre = np.interp(data_1_u_pre,velocity_bins,cd_mean)
 Cd_data_1_mean_post = np.interp(data_1_u_post,velocity_bins,cd_mean)
-Cd_mean_2 = Cd_data_1_mean_post 
+Cd_mean_1 = Cd_data_1_mean_post 
 
 Cd_data_1_mean = (Cd_data_1_mean_pre+Cd_data_1_mean_post)/2
 Cd_data_1_std = np.round(np.std(Schmeeckle_2007_CD_u[:,1]),decimals=2) # Data too sparse for interpolation. Make generalized asumption using all data
@@ -191,7 +191,7 @@ Cd_data_2_mean_pre = np.interp(data_2_u_pre,velocity_bins,cd_mean)
 Cd_data_2_mean_post = np.interp(data_2_u_post,velocity_bins,cd_mean)
 Cd_data_2_mean = (Cd_data_2_mean_pre+Cd_data_2_mean_post)/2
 Cd_data_2_std = np.interp(data_2_u_post,velocity_bins,std_mean)
-Cd_mean_3 = Cd_data_2_mean_post 
+Cd_mean_2 = Cd_data_2_mean_post 
 
 #%% 
 
@@ -245,10 +245,10 @@ def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step)
 
-X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_2,Cd_data_1_std)
+X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_1,Cd_data_1_std)
 C_d_data_1 = X.rvs(monte_carlo_step)
 
-X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_3,Cd_data_2_std)
+X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_2,Cd_data_2_std)
 C_d_data_2 = X.rvs(monte_carlo_step)
 
 #%% Generate force balance parameter distributions for fluid-grain interactions not experimentally controlled 
@@ -257,10 +257,10 @@ C_d_data_2 = X.rvs(monte_carlo_step)
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step)
 
-X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_2,Cd_data_1_std)
+X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_1,Cd_data_1_std)
 C_d_data_1 = X.rvs(monte_carlo_step)
 
-X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_3,Cd_data_2_std)
+X = get_truncated_normal(C_d_max,C_d_min,Cd_mean_2,Cd_data_2_std)
 C_d_data_2 = X.rvs(monte_carlo_step)
 
 #%% Define deterministic force balance 
@@ -325,3 +325,10 @@ plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
 plt.xlim(x_lim)
 plt.tight_layout()
+
+#%% 
+
+
+
+
+
