@@ -1,4 +1,4 @@
-﻿sample number,C axis (B),B axis (m),A axis (m),density (kg/m3),volume (m3),flow velocity (m/s)
+﻿sample number,C axis (m),B axis (m),A axis (m),density (kg/m3),volume (m3),flow velocity (m/s)
 30,0.12,0.15,0.37,2720,0.0028,1.34
 18,0.15,0.18,0.30,2700,0.0037,1.36
 17,0.15,0.17,0.26,2700,0.0028,1.42
