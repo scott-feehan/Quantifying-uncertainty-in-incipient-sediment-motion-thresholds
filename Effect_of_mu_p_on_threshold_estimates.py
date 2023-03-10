@@ -58,7 +58,7 @@ C_d_max = 3
 C_d_stdv = 0.29
 
 # Lift coefficient 
-C_l_mean = 0.38
+C_l_mean = 0.85*C_d_mean
 C_l_min = 0.06
 C_l_max = 2 
 C_l_stdv = 0.29
@@ -104,9 +104,11 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
+C_l = np.sort(C_l)
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
+C_d = np.sort(C_d)
 
 #%% Define force balance 
 
@@ -437,7 +439,7 @@ ylim_high = np.max(m_t_shields_stress_phi_p_smoothed)+((np.max(m_t_shields_stres
 ylim_low = np.min(m_t_shields_stress_phi_p_smoothed)-((np.max(m_t_shields_stress_phi_p_smoothed) - np.min(m_t_shields_stress_phi_p_smoothed))*0.05)
 plt.ylim([ylim_low,ylim_high])
 plt.text(17.5,(ylim_high - ylim_low)*label_y + ylim_low,'g',fontsize=14,fontweight='bold')
-plt.ylabel(r'Shields stress, $\tau^*_c$',fontsize=14)
+plt.ylabel(r'Critical Shields stress, $\tau^*_c$',fontsize=14)
 plt.xlabel('Effective friction angle, $\phi$ ($\N{DEGREE SIGN}$)',fontsize=14)
 plt.xlim([min(np.rad2deg(np.arctan(mu_range))),max(np.rad2deg(np.arctan(mu_range)))])
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)

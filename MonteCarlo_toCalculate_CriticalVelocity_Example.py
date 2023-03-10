@@ -45,7 +45,7 @@ C_d_max = 3
 C_d_stdv = 0.29
 
 # Lift coefficient 
-C_l_mean = 0.38
+C_l_mean = 0.85*C_d_mean
 C_l_min = 0.06
 C_l_max = 2 
 C_l_stdv = 0.29
@@ -82,9 +82,11 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
+C_l = np.sort(C_l)
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
+C_d = np.sort(C_d)
 
 X = get_truncated_normal(p_max ,p_min,p_mean,p_stdv)  
 p = X.rvs(monte_carlo_step) 
@@ -203,4 +205,3 @@ plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
 plt.xlim([min(Grain_size_range),max(Grain_size_range)])
 plt.tight_layout()
-

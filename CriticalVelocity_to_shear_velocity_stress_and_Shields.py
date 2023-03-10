@@ -58,7 +58,7 @@ C_d_max = 3
 C_d_stdv = 0.29
 
 # Lift coefficient 
-C_l_mean = 0.38
+C_l_mean = 0.85*C_d_mean#0.38
 C_l_min = 0.06
 C_l_max = 2 
 C_l_stdv = 0.29
@@ -97,9 +97,11 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
+C_l = np.sort(C_l)
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
+C_d = np.sort(C_d)
 
 X = get_truncated_normal(p_max ,p_min,p_mean,p_stdv)  
 p = X.rvs(monte_carlo_step) 
@@ -132,6 +134,8 @@ def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p
 
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(Grain_size)])
 
+
+
 B_axis = Grain_size
 A_axis = B_axis
 C_axis = B_axis
@@ -143,19 +147,25 @@ for i in range(0,len(Grain_size)): # Monte Carlo simulation across grain sizes
     
     v_ForceBalance[:,i] = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta[i],A_axis[i],B_axis[i],C_axis[i],V_w_V,V[i],A[i],p)
     
+    
 # Calculate statistics of distribution 
 v_FB_median = np.zeros(len(Grain_size))
 v_FB_iqr = np.zeros(len(Grain_size))
 v_FB_90 = np.zeros(len(Grain_size))
+
+
 
 for i in range(0,len(Grain_size)):
     
     v_FB_median[i] = np.nanmedian(v_ForceBalance[:,i])
     v_FB_iqr[i] = iqr(v_ForceBalance[:,i],nan_policy='omit')
     v_FB_90[i] = iqr(v_ForceBalance[:,i],rng=(5,95),nan_policy='omit')
+    
+
 
 v_FB_iqr = v_FB_iqr/2
 v_FB_90 = v_FB_90/2
+
 
 #%% 
 
@@ -230,7 +240,7 @@ a,m = np.polyfit(np.log(x),np.log(y),1) # Fit between log of grain size and flow
 m_v_median = np.round(np.e**m,decimals=3) # Convert from log-log linear space to calculate Power Law coefficeint 
 
 a,m = np.polyfit(np.log(x),np.log(y_iqr),1) # Repeat fit for uncertainty in flow parameter
-m_v_iqr= np.round(np.e**m,decimals=3)
+m_v_iqr = np.round(np.e**m,decimals=3)
 
 #%% Shear velocity
 
@@ -264,6 +274,13 @@ m_t_shields = np.round(np.e**m,decimals=3)
 
 a,m = np.polyfit(np.log(x),np.log(y_iqr),1)
 m_t_shields_iqr = np.round(np.e**m,decimals=3)
+
+#%% Printing m coefficients 
+
+print('m_c = '+str(m_v_median)+' +/- '+str(np.round(m_v_iqr - m_v_median,decimals=3)))
+print('m_shear = '+str(m_shear)+' +/- '+str(np.round(m_shear_iqr - m_shear,decimals=3)))
+print('m_tau_shear = '+str(m_t_shear)+' +/- '+str(m_t_shear_iqr - m_t_shear))
+print('m_tau_shields = '+str(m_t_shields)+' +/- '+str(m_t_shields_iqr - m_t_shields))
 
 #%% Plotting all the estimated u_c across the range of roughness layer heights and grain locations within the roughness layer. 
 
@@ -369,7 +386,7 @@ plt.plot(Grain_size,u_shear_median+u_shear_iqr,c=line_color,linestyle='--',linew
 plt.plot(Grain_size,u_shear_median-u_shear_iqr,c=line_color,linestyle='--',linewidth=3)
 plt.plot(Grain_size,u_shear_median+u_shear_90,c=line_color,linestyle=':',linewidth=3)
 plt.plot(Grain_size,u_shear_median-u_shear_90,c=line_color,linestyle=':',linewidth=3)
-plt.ylabel('Shear velocity, $u_*$ (m/s)',fontsize=14)
+plt.ylabel('Critical shear velocity, $u_*$ (m/s)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
@@ -385,7 +402,7 @@ plt.plot(Grain_size,t_shear_stress_median+t_shear_stress_iqr,c=line_color,linest
 plt.plot(Grain_size,t_shear_stress_median-t_shear_stress_iqr,c=line_color,linestyle='--',linewidth=3)
 plt.plot(Grain_size,t_shear_stress_median+t_shear_stress_90,c=line_color,linestyle=':',linewidth=3)
 plt.plot(Grain_size,t_shear_stress_median-t_shear_stress_90,c=line_color,linestyle=':',linewidth=3)
-plt.ylabel(r'Shear stress, $\tau$ (Pa)',fontsize=14)
+plt.ylabel(r'Critical shear stress, $\tau$ (Pa)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
@@ -401,7 +418,7 @@ plt.plot(Grain_size,t_shields_stress_median+t_shields_stress_iqr,Grain_size,t_sh
 plt.plot(Grain_size,t_shields_stress_median+t_shields_stress_90,c=line_color,linestyle=':',linewidth=3)
 plt.plot(Grain_size,t_shields_stress_median-t_shields_stress_90,c=line_color,linestyle=':',linewidth=3)
 plt.xlabel('Grain size (m)',fontsize=14)
-plt.ylabel(r'Critical Shields, $\tau^*_c$',fontsize=14)
+plt.ylabel(r'Critical Shields stress, $\tau^*_c$',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)

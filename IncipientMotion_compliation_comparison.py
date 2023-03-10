@@ -24,11 +24,11 @@ from scipy.stats import iqr
 #%% 
 
 #filepath = 'Shields_comp_field.csv' 
-filepath = 'Shields_compilation_field.csv'
+filepath = '/Users/scottfeehan/Box Sync/Spyder/Github-repositories/Incorporating-variability-in-incipient-sediment-motion/Observational-data/Shields_compilation_field.csv'
 Shields_comp_field = pd.read_csv(filepath)
 
 #filepath = 'Shields_comp_flume.csv' 
-filepath = 'Shields_compilation_flume.csv'
+filepath = '/Users/scottfeehan/Box Sync/Spyder/Github-repositories/Incorporating-variability-in-incipient-sediment-motion/Observational-data/Shields_compilation_flume.csv'
 Shields_comp_flume = pd.read_csv(filepath)
 
 #%% 
@@ -93,7 +93,7 @@ C_d_max = 3
 C_d_stdv = 0.29
 
 # Lift coefficient 
-C_l_mean = 0.38
+C_l_mean = 0.85*C_d_mean
 C_l_min = 0.06
 C_l_max = 2 
 C_l_stdv = 0.29
@@ -149,9 +149,11 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
+C_l = np.sort(C_l)
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
+C_d = np.sort(C_d)
 
 X = get_truncated_normal(p_max ,p_min,p_mean,p_stdv)  
 p = X.rvs(monte_carlo_step) 
@@ -386,12 +388,12 @@ plt.scatter(u_shear_median_field ,Shear_velocity_field,c=Shields_stress_field,ed
 plt.plot(u_shear_1_1,u_shear_1_1,'r',label='1:1')
 plt.plot(u_shear_1_1,u_shear_1_1+u_shear_1_1_90,'r--',alpha=1,label='95 to 5')
 plt.plot(u_shear_1_1,u_shear_1_1-u_shear_1_1_90,'r--',alpha=1)
-plt.ylabel('Reported shear velocity ($u_*$)',fontsize=14)
-plt.xlabel('Theoretical shear velocity ($u_*$)',fontsize=14)
+plt.ylabel('Reported critical shear velocity ($u_*$)',fontsize=14)
+plt.xlabel('Theoretical critical shear velocity ($u_*$)',fontsize=14)
 plt.clim(min(np.append(Shields_stress_field,Shields_stress_flume)),0.09)
 cbar = plt.colorbar(orientation="vertical",pad=0.05)
 cbar.ax.tick_params(labelsize=14,size=6)
-cbar.ax.set_yticklabels(labels=('0.01','0.02','0.03','0.04','0.05','0.06','0.07','0.08','>0.09'),fontsize=14)
+cbar.ax.set_yticklabels(labels=('0','0.01','0.02','0.03','0.04','0.05','0.06','0.07','0.08','>0.09'),fontsize=14)
 cbar.set_label(r'$\tau^*_c$', fontsize=16)
 plt.legend(fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
