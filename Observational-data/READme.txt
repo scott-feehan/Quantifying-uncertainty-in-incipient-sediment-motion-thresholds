@@ -1,4 +1,4 @@
-## Datasets associated with Feehan et. al. 2023 “The influence of variability in lift, drag, protrusion, friction angle, and particle and fluid density on incipient sediment motion” 
+## Datasets associated with Feehan et. al. 2023 “Quantifying uncertainty of incipient motion thresholds in gravel-bedded rivers using a grain-scale force-balance model” 
 
 File: Shields_compilation_field.csv  
 Description: incipient motion observations (n=80) from field studies across fluvial systems derived from the literature. 
