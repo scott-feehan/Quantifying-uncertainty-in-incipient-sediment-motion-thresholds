@@ -18,19 +18,20 @@ import matplotlib.pyplot as plt
 from scipy.stats import truncnorm
 from scipy.stats import iqr
 
-
 #%% Uploading data
 
 # Experimental flume data
+#filepath = 'Wu_Shih_2012_Experiment_1.csv'
 filepath = 'Wu_Shih_2012_Experiment_1.csv'
 Wu_dataset_1 = np.loadtxt(filepath,delimiter=',',skiprows=1)
 
+#filepath = 'Wu_Shih_2012_Experiment_2.csv'
 filepath = 'Wu_Shih_2012_Experiment_2.csv'
 Wu_dataset_2 = np.loadtxt(filepath,delimiter=',',skiprows=1)
 
 # Near grain velocity - Drag coefficient observations
-filepath = filepath = 'Schmeeckle_fig_10c.txt'
-Schmeeckle_2007_CD_u = np.loadtxt(filepath,skiprows=1) # Drag coefficient, grain proximal velocity 
+filepath = 'Schmeeckle_fig_10c.csv'
+Schmeeckle_2007_CD_u = np.loadtxt(filepath,delimiter=',',skiprows=1) # Drag coefficient, grain proximal velocity 
 Schmeeckle_2007_CD_u[:,0] = Schmeeckle_2007_CD_u[:,0]/100 # Convert velocity to m/s
 
 #%% Constraints and parameters 
@@ -92,8 +93,9 @@ data_2_sigma_pre = 0.023
 data_2_u_post = np.round(np.mean(Wu_mean_data_2_pos),decimals=3)
 data_2_sigma_post = 0.026 
 
-#%% Calculating the mean coefficient of friction tan(phi) = mu of the idealized pocket using method from Kirchner et. al. (1990). Dataset 2 pivots between two spheres. 
-# Dataset 3 pivots either up and over particle directly downstream or diagonal to flow direction through pocket. 
+#%% Calculating the mean coefficient of friction tan(phi) = mu of the idealized pocket using method from Kirchner et. al. (1990). 
+# Dataset 2 pivots between two spheres 
+# Dataset 3 pivots either up and over particle directly downstream or diagonal to flow direction through pocket 
 
 # Coefficient of friction  Pocket 1 - Dataset 2
 mu_p1_mean = (1/(np.sqrt(3)))/(np.sqrt((grain/bed)**2  + 2*(grain/bed) - (1/3))) # Eq 1, Kirchner et al. 1990 # tan(phi) = this equation
@@ -142,7 +144,6 @@ B_axis = grain
 V = (B_axis/2)*(B_axis/2)*(B_axis/2)*(4/3)*np.pi # Volume of test particle
 A = (B_axis/2)*(B_axis/2)*np.pi # Area 
 
-
 #%% Using independent grain proximal-$C_D$ observations from Schmeeckle et. al. (2007) to calibrate mean $C_D$ for the respective experimental Monte Carlo simulation for the respective experiments.
 
 # Find rolling mean and standard deviation 
@@ -156,7 +157,6 @@ for i in range(0,len(velocity_bins)-1):
     temp = np.where((Schmeeckle_2007_CD_u[:,0] > velocity_bins[i]) & (Schmeeckle_2007_CD_u[:,0] < velocity_bins[i+1])) # Calculate mean Cd for each velocity bin 
     cd_mean[i] = np.mean(Schmeeckle_2007_CD_u[temp,1])
     std_mean[i] = np.std(Schmeeckle_2007_CD_u[temp,1]) 
-
 
 #%% Plot interpolated location 
 
@@ -238,7 +238,6 @@ plt.tight_layout()
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
-
 
 #%% Monte Carlo simulation using Wu and Shih (2012) experimental constraints 
 

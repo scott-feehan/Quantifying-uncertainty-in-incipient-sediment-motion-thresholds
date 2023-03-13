@@ -76,8 +76,7 @@ A_B = np.mean(Helley_1969[:,3]/Helley_1969[:,2])
 C_B = np.mean(Helley_1969[:,1]/Helley_1969[:,2])
 grain_range = np.arange(0.001,1.001,0.001) # Range of grain sizes for general case 
 
-
-#%% Create function to generate truncated normal distributions for force balaance parameters 
+#%% Create function to generate truncated normal distributions for force balance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
@@ -95,7 +94,7 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
-C_l = np.sort(C_l)
+C_l = np.sort(C_l) # Sort to vary percentile C_l value with C_d
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
@@ -125,7 +124,6 @@ C_axis = B_axis*C_B
 V = (A_axis/2)*(B_axis/2)*(C_axis/2)*(4/3)*np.pi
 A_n = (B_axis/2)*(C_axis/2)*np.pi
 A_p = (A_axis/2)*(B_axis/2)*np.pi
-#theta = 10**-3
 
 for i in range(0,len(grain_range)):
         

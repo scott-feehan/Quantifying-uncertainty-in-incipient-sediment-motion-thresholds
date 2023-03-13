@@ -73,7 +73,7 @@ ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
 # Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
-#%% Create function to generate truncated normal distributions for force balaance parameters 
+#%% Create function to generate truncated normal distributions for force balance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
@@ -89,7 +89,7 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
-C_l = np.sort(C_l)
+C_l = np.sort(C_l) # Sort to vary percentile C_l value with C_d
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
@@ -109,7 +109,8 @@ while True:
     if len(temp[0]) <1:
         break 
 
-#%% 
+#%% Define deterministic force balance 
+# Wiberg and Smith (1987) 
 
 def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p):
     r = B_axis/2

@@ -58,7 +58,7 @@ C_d_max = 3
 C_d_stdv = 0.29
 
 # Lift coefficient 
-C_l_mean = 0.85*C_d_mean#0.38
+C_l_mean = 0.85*C_d_mean
 C_l_min = 0.06
 C_l_max = 2 
 C_l_stdv = 0.29
@@ -81,7 +81,7 @@ ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
 # Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
 
-#%% Create function to generate truncated normal distributions for force balaance parameters 
+#%% Create function to generate truncated normal distributions for force balance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
@@ -97,7 +97,7 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
-C_l = np.sort(C_l)
+C_l = np.sort(C_l) # Sort to vary percentile C_l value with C_d
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
@@ -134,8 +134,6 @@ def ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta,A_axis,B_axis,C_axis,V_w_V,V,A,p
 
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(Grain_size)])
 
-
-
 B_axis = Grain_size
 A_axis = B_axis
 C_axis = B_axis
@@ -146,14 +144,11 @@ theta = Slope
 for i in range(0,len(Grain_size)): # Monte Carlo simulation across grain sizes
     
     v_ForceBalance[:,i] = ForceBalance(rho_s,rho_w,g,mu,C_l,C_d,theta[i],A_axis[i],B_axis[i],C_axis[i],V_w_V,V[i],A[i],p)
-    
-    
+     
 # Calculate statistics of distribution 
 v_FB_median = np.zeros(len(Grain_size))
 v_FB_iqr = np.zeros(len(Grain_size))
 v_FB_90 = np.zeros(len(Grain_size))
-
-
 
 for i in range(0,len(Grain_size)):
     
@@ -161,11 +156,8 @@ for i in range(0,len(Grain_size)):
     v_FB_iqr[i] = iqr(v_ForceBalance[:,i],nan_policy='omit')
     v_FB_90[i] = iqr(v_ForceBalance[:,i],rng=(5,95),nan_policy='omit')
     
-
-
 v_FB_iqr = v_FB_iqr/2
 v_FB_90 = v_FB_90/2
-
 
 #%% 
 
@@ -187,7 +179,7 @@ for h in range(0,len(Grain_size)):
         z_1 = z_2 - Grain_size[h] # Location of the bottom of the grain is top of grain minus grain size
         
         u_shear[h,i] = (Velocity[i]*k_von*(z_2 - z_1))/(((((k_s)/30)+z_2)*np.log(1 + ((30*z_2)/(k_s))) - z_2)
-                 - ((((k_s)/30)+z_1)*np.log(1 + ((30*z_1)/(k_s))) - z_1)) # solve for shear value at each randomly selected rougness layer 
+                 - ((((k_s)/30)+z_1)*np.log(1 + ((30*z_1)/(k_s))) - z_1)) # Solve for shear value at each randomly selected rougness layer 
         
         t_shear_stress[h,i] = rho_w[i]*(u_shear[h,i]**2) # Convert to shear stress 
         t_shields_stress[h,i] = (rho_w[i]*(u_shear[h,i]**2))/((rho_s[i] - rho_w[i])*g*Grain_size[h]) # Convert to Shield's stress 
@@ -227,8 +219,7 @@ t_shear_stress_iqr = t_shear_stress_iqr/2
 t_shear_stress_90 = t_shear_stress_90/2
 t_shields_stress_iqr = t_shields_stress_iqr/2
 t_shields_stress_90 = t_shields_stress_90/2
-      
-
+     
 #%% Determine relationship between grain size and the median specified flow parameter and uncertainty (IQR) 
 # Critical velocity
 
@@ -296,7 +287,7 @@ v_critical = np.zeros([len(temp_v_matrix),2]) # Combine grain size and velocity 
 v_critical[:,0] = temp_boulder_matrix 
 v_critical[:,1] = temp_v_matrix 
 
-x_space = Grain_size # Create bin spacing for x axis# Create bin spacing for x axis
+x_space = Grain_size # Create bin spacing for x axis
 y_space = np.linspace((min(v_critical[:,1])), (max(v_critical[:,1])),len(Grain_size)) # Create bin spacing for y axis with same number of bins as x axis
 
 #%% 

@@ -89,7 +89,8 @@ mu_stdv = np.sqrt( np.log( finalsigma**2 / finalmu**2 + 1))
 mu_range = np.log(finalmu/np.exp(0.5*ln_mu_stdv**2))
 
 # Assume all distributions have a truncated normal except mu which has a lognormal distribution (Booth et. al., 2014)
-#%% Create function to generate truncated normal distributions for force balaance parameters 
+
+#%% Create function to generate truncated normal distributions for force balance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
@@ -104,7 +105,7 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
-C_l = np.sort(C_l)
+C_l = np.sort(C_l) # Sort to vary percentile C_l value with C_d
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
@@ -363,13 +364,13 @@ ylim_high = np.max(m_u_shear_phi_p)+((np.max(m_u_shear_phi_p) - np.min(m_u_shear
 ylim_low = np.min(m_u_shear_phi_p)-((np.max(m_u_shear_phi_p) - np.min(m_u_shear_phi_p))*0.05)
 plt.ylim([ylim_low,ylim_high])
 plt.text(17.5,(ylim_high - ylim_low)*label_y + ylim_low,'c',fontsize=14,fontweight='bold')
-plt.ylabel('Shear velocity coefficient, $m_s$',fontsize=14)
+plt.ylabel('Shear velocity coefficient, $m_*$',fontsize=14)
 plt.xlabel('Effective friction angle, $\phi$ ($\N{DEGREE SIGN}$)',fontsize=14)
 plt.xlim([min(np.rad2deg(np.arctan(mu_range))),max(np.rad2deg(np.arctan(mu_range)))])
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
 plt.tick_params(which='minor',length=5)
-plt.text(text_x,(ylim_high - ylim_low)*text_y + ylim_low,'$u_s = m_s D^{0.5}$',fontsize=18,bbox=dict(facecolor='white',alpha=0.5,edgecolor='none'))
+plt.text(text_x,(ylim_high - ylim_low)*text_y + ylim_low,'$u_{*c} = m_* D^{0.5}$',fontsize=18,bbox=dict(facecolor='white',alpha=0.5,edgecolor='none'))
 plt.tick_params(bottom=True,top=True,left=True,right=True,which='both')
 plt.minorticks_on()
 
@@ -378,7 +379,7 @@ for i in range(0,len(p_range)):
     
     plt.plot(np.rad2deg(np.arctan(mu_range)),m_u_shear_phi_p_iqr[:,i],color=colors[i],linewidth=3)
     
-plt.ylabel('$m_s$ uncertainty, $+/-$',fontsize=14)
+plt.ylabel('$m_*$ uncertainty, $+/-$',fontsize=14)
 plt.xlabel('Effective friction angle, $\phi$ ($\N{DEGREE SIGN}$)',fontsize=14)
 plt.tick_params(axis='both',which='both',direction='in',labelsize=14)
 plt.tick_params(which='major',length=10)
@@ -402,7 +403,7 @@ ylim_high = np.max(m_t_shear_stress_phi_p)+((np.max(m_t_shear_stress_phi_p) - np
 ylim_low = np.min(m_t_shear_stress_phi_p)-((np.max(m_t_shear_stress_phi_p) - np.min(m_t_shear_stress_phi_p))*0.05)
 plt.ylim([ylim_low,ylim_high])
 plt.text(17.5,(ylim_high - ylim_low)*label_y + ylim_low,'e',fontsize=14,fontweight='bold')
-plt.text(text_x,(ylim_high - ylim_low)*text_y + ylim_low,r'$\tau_b = m_{\tau} D$',fontsize=18,bbox=dict(facecolor='white',alpha=0.5,edgecolor='none'))
+plt.text(text_x,(ylim_high - ylim_low)*text_y + ylim_low,r'$\tau_c = m_{\tau} D$',fontsize=18,bbox=dict(facecolor='white',alpha=0.5,edgecolor='none'))
 plt.ylabel(r'Shear stress coefficient, $m_{\tau}$',fontsize=14)
 plt.xlabel('Effective friction angle, $\phi$ ($\N{DEGREE SIGN}$)',fontsize=14)
 plt.xlim([min(np.rad2deg(np.arctan(mu_range))),max(np.rad2deg(np.arctan(mu_range)))])
@@ -466,5 +467,3 @@ plt.tick_params(bottom=True,top=True,left=True,right=True,which='both')
 plt.minorticks_on()
 plt.xlim([min(np.rad2deg(np.arctan(mu_range))),max(np.rad2deg(np.arctan(mu_range)))])
 plt.tight_layout()
-
-

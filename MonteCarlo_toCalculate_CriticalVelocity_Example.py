@@ -66,7 +66,7 @@ mu_stdv = 0.27
 ln_mu_stdv = np.sqrt( np.log( mu_stdv**2 / mu_mean**2 + 1))
 ln_mu = np.log(mu_mean/np.exp(0.5*ln_mu_stdv**2))
 
-#%% Create function to generate truncated normal distributions for force balaance parameters 
+#%% Create function to generate truncated normal distributions for force balance parameters 
 
 def get_truncated_normal(upp,low, mean, sd): # Upper bound # Lower bound # Mean # Standard deviation
     return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
@@ -82,7 +82,7 @@ rho_w = X.rvs(monte_carlo_step)
 
 X = get_truncated_normal(C_l_max,C_l_min,C_l_mean,C_l_stdv)
 C_l = X.rvs(monte_carlo_step) 
-C_l = np.sort(C_l)
+C_l = np.sort(C_l) # Sort to vary percentile C_l value with C_d
 
 X = get_truncated_normal(C_d_max ,C_d_min,C_d_mean,C_d_stdv )
 C_d = X.rvs(monte_carlo_step) 
@@ -148,7 +148,7 @@ plt.tick_params(which='minor',length=5)
 
 #%% Perform Monte Carlo simulation for grain sizes 1 mm to 1 m at a 1 mm resolution
 
-Grain_size_range = np.arange(0.001,1.001,0.001) # Range of grain sizes to sample over
+Grain_size_range = np.arange(0.002,1.001,0.001) # Range of grain sizes to sample over
 
 v_ForceBalance = np.zeros([int(monte_carlo_step),len(Grain_size_range)]) # Empty array to store Monte Carlo velocity estimates
 
